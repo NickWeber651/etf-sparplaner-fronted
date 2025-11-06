@@ -2,7 +2,7 @@
 const modules = [
   { id: 1, name: 'M1 – Backend-Grundlagen', done: true },
   { id: 2, name: 'M2 – Vue-Unterkomponente mit v-for', done: false },
-  { id: 3, name: 'M3 – REST / API-Anbindung', done: false },
+  { id: 3, name: 'M3 – REST / API-Anbindung', done: false }
 ]
 </script>
 
@@ -10,9 +10,9 @@ const modules = [
   <section>
     <h2>Unsere WebTech-Meilensteine</h2>
     <ul>
-      <!-- v-for = DIES ist die wichtige Anforderung für M2 -->
+      <!-- genau hier erfüllst du die M2-Anforderung: v-for -->
       <li v-for="m in modules" :key="m.id">
-        <strong>{{ m.name }}</strong>
+        {{ m.name }}
         <span v-if="m.done"> ✅ erledigt</span>
         <span v-else> ⏳ in Arbeit</span>
       </li>
@@ -24,11 +24,9 @@ const modules = [
 h2 {
   margin-bottom: 0.5rem;
 }
-
 ul {
   padding-left: 1.2rem;
 }
-
 li {
   margin: 0.25rem 0;
 }

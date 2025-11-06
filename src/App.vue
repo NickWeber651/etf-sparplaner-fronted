@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import MyList from './components/MyList.vue'   // 👈 unsere eigene Unterkomponente
 </script>
 
 <template>
@@ -8,7 +8,8 @@ import HelloWorld from './components/HelloWorld.vue'
     <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
 
     <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+      <!-- 👇 Hier war vorher <HelloWorld msg="You did it!" /> -->
+      <MyList />
 
       <nav>
         <RouterLink to="/">Home</RouterLink>
@@ -26,7 +27,7 @@ header {
   max-height: 100vh;
 }
 
-.logo {
+logo {
   display: block;
   margin: 0 auto 2rem;
 }
