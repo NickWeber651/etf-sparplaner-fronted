@@ -1,91 +1,56 @@
 <script setup lang="ts">
-import MyList from './components/MyList.vue'
+/**
+ * === SCRIPT-BEREICH ===
+ * Ähnlich wie import-Statements in Java: Wir laden andere Komponenten.
+ * "setup" bedeutet: Dieser Code läuft beim Start der Komponente (wie ein Konstruktor).
+ * TypeScript (ts) ist wie Java typsicher - Fehler werden früh erkannt!
+ */
+
+// Import von Komponenten (wie: import MyClass from package in Java)
+// Jede .vue-Datei ist eine wiederverwendbare Komponente
+import AppHeader from './components/AppHeader.vue'           // Header mit Logo und Titel
+import SavingsPlanForm from './components/SavingsPlanForm.vue' // Formular links
+import ScenarioCards from './components/ScenarioCards.vue'     // Szenario-Karten rechts
+import MyList from './components/MyList.vue'                   // Roadmap unten
 </script>
 
 <template>
+  <!--
+    === TEMPLATE-BEREICH ===
+    Hier steht das HTML - die Struktur der Seite.
+    Ähnlich wie die Benutzeroberfläche in JavaFX oder Swing.
+  -->
+
+  <!-- Haupt-Container der gesamten App -->
   <div class="app">
-    <header class="header">
-      <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="80" height="80" />
-      <div>
-        <h1>ETF-Sparplaner</h1>
-        <p class="subtitle">
-          Simuliere, wie sich dein monatlicher ETF-Sparplan über die Zeit entwickeln könnte.
-        </p>
-      </div>
-    </header>
 
+    <!--
+      AppHeader ist eine Komponente (wie ein Objekt einer Klasse in Java).
+      Props sind wie Parameter beim Methodenaufruf:
+      new AppHeader("ETF-Sparplaner", "Simuliere...") in Java gedacht
+    -->
+    <AppHeader
+      title="ETF-Sparplaner"
+      subtitle="Simuliere, wie sich dein monatlicher ETF-Sparplan über die Zeit entwickeln könnte."
+    />
+
+    <!--
+      <main> ist ein semantisches HTML5-Element für den Hauptinhalt.
+      class="main" verknüpft es mit CSS-Styles (siehe unten).
+    -->
     <main class="main">
-      <!-- LINKER BLOCK: Beschreibung + Formular-Platzhalter -->
-      <section class="left">
-        <h2>Dein Sparplan</h2>
-        <p>
-          Wähle einen ETF (z.&nbsp;B. den <strong>S&amp;P&nbsp;500</strong>), gib deine monatliche Sparrate
-          und die geplante Laufzeit ein. Später wird dir die App zeigen, wie sich dein Vermögen unter
-          verschiedenen Annahmen entwickeln kann.
-        </p>
 
-        <form class="form" @submit.prevent>
-          <div class="form-row">
-            <label for="etf">ETF auswählen</label>
-            <select id="etf" disabled>
-              <option>S&amp;P 500 (Platzhalter)</option>
-              <option>MSCI World (Platzhalter)</option>
-            </select>
-            <small>Später kommt hier eine echte Auswahl aus dem Backend.</small>
-          </div>
+      <!-- Linke Spalte: Formular-Komponente (ohne Props, da alles intern) -->
+      <SavingsPlanForm />
 
-          <div class="form-row">
-            <label for="rate">Monatliche Sparrate (EUR)</label>
-            <input id="rate" type="number" placeholder="z.B. 200" disabled />
-          </div>
-
-          <div class="form-row">
-            <label for="years">Laufzeit (Jahre)</label>
-            <input id="years" type="number" placeholder="z.B. 15" disabled />
-          </div>
-
-          <button type="submit" disabled class="btn-disabled">
-            Berechnen (kommt später)
-          </button>
-
-          <p class="hint">
-            Hinweis: Dies ist ein Prototyp. Die echte Berechnung (Zinseszins, Szenarien) wird später im
-            Backend umgesetzt.
-          </p>
-        </form>
-      </section>
-
-      <!-- RECHTER BLOCK: Szenarien als statische Beispiele -->
-      <section class="right">
-        <h2>Szenarien (Beispielwerte)</h2>
-        <div class="cards">
-          <article class="card best">
-            <h3>Best-Case</h3>
-            <p>Ø Rendite: 8&nbsp;% p.a.</p>
-            <p>Nach 15 Jahren: ca. 68.000&nbsp;€</p>
-          </article>
-
-          <article class="card base">
-            <h3>Basis-Szenario</h3>
-            <p>Ø Rendite: 6&nbsp;% p.a.</p>
-            <p>Nach 15 Jahren: ca. 55.000&nbsp;€</p>
-          </article>
-
-          <article class="card worst">
-            <h3>Worst-Case</h3>
-            <p>Ø Rendite: 3&nbsp;% p.a.</p>
-            <p>Nach 15 Jahren: ca. 42.000&nbsp;€</p>
-          </article>
-        </div>
-
-        <p class="disclaimer">
-          Alle Werte sind nur Beispielzahlen für das UI-Design und keine echte Berechnung oder
-          Anlageempfehlung.
-        </p>
-      </section>
+      <!-- Rechte Spalte: Szenario-Komponente (zeigt 3 Karten) -->
+      <ScenarioCards />
     </main>
 
-    <!-- Deine Unterkomponente mit v-for -->
+    <!--
+      <section> gruppiert thematisch zusammengehörende Inhalte.
+      Hier: Die Roadmap mit MyList-Komponente (enthält ein v-for wie eine for-Schleife)
+    -->
     <section class="roadmap">
       <MyList />
     </section>
@@ -93,134 +58,52 @@ import MyList from './components/MyList.vue'
 </template>
 
 <style scoped>
+/**
+ * === STYLE-BEREICH ===
+ * CSS = Cascading Style Sheets = Wie die Seite AUSSIEHT (Design, Layout, Farben)
+ * "scoped" bedeutet: Diese Styles gelten NUR für diese Komponente (Kapselung wie in Java!)
+ */
+
+/**
+ * .app = CSS-Selektor für class="app"
+ * In CSS beginnen Klassen mit einem Punkt (.)
+ * Alle Eigenschaften zwischen {} gelten für dieses Element
+ */
 .app {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 3rem;
+  max-width: 1100px;        /* Maximale Breite: 1100 Pixel (sonst zu breit auf großen Monitoren) */
+  margin: 0 auto;           /* auto = zentriert den Container horizontal */
+  padding: 2rem 1.5rem 3rem; /* Innenabstand: oben 2rem, links/rechts 1.5rem, unten 3rem */
+                            /* rem = relative Einheit (1rem ≈ 16px standardmäßig) */
 }
 
-.header {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.logo {
-  flex-shrink: 0;
-}
-
-.subtitle {
-  margin-top: 0.25rem;
-  color: var(--color-text);
-  opacity: 0.85;
-}
-
+/**
+ * CSS Grid = Modernes Layout-System (wie ein unsichtbares Gitter)
+ * Ähnlich wie GridLayout in Java Swing, aber viel mächtiger
+ */
 .main {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 2rem;
-  align-items: flex-start;
+  display: grid;                        /* Aktiviert Grid-Layout */
+  grid-template-columns: 1.2fr 1fr;     /* 2 Spalten: Links ist 1.2x so breit wie rechts */
+                                        /* fr = "fraction" (Bruchteil) - teilt den Platz auf */
+  gap: 2rem;                            /* Abstand zwischen den Grid-Elementen */
+  align-items: flex-start;              /* Elemente oben ausrichten (nicht mittig strecken) */
 }
 
-.left p,
-.right p {
-  margin-bottom: 0.75rem;
-}
-
-.form {
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: var(--color-background-soft);
-  border: 1px solid var(--color-border);
-}
-
-.form-row {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 0.75rem;
-}
-
-label {
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-}
-
-input,
-select {
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.4rem;
-  border: 1px solid var(--color-border);
-  font: inherit;
-}
-
-small {
-  font-size: 0.75rem;
-  opacity: 0.8;
-}
-
-.btn-disabled {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: 0.5rem;
-  border: none;
-  background: #ccc;
-  color: #555;
-  cursor: not-allowed;
-}
-
-.hint {
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-
-.cards {
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-}
-
-/* 🔴 HIER: Karten immer weiß, mit leichtem Schatten */
-.card {
-  padding: 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-border);
-  background: #ffffff;       /* weißer Hintergrund */
-  color: #222;               /* dunkler Text */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.card h3 {
-  margin-bottom: 0.4rem;
-}
-
-/* Optional: bunte Ränder links für die drei Szenarien */
-.best {
-  border-left: 5px solid #2e7d32;
-}
-.base {
-  border-left: 5px solid #1565c0;
-}
-.worst {
-  border-left: 5px solid #ef6c00;
-}
-
-.disclaimer {
-  margin-top: 0.75rem;
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-
+/**
+ * Abstand für die Roadmap-Sektion
+ */
 .roadmap {
-  margin-top: 2.5rem;
+  margin-top: 2.5rem;  /* Außenabstand nach oben (Abstand zum Element darüber) */
 }
 
-/* Mobile-Layout */
+/**
+ * === RESPONSIVE DESIGN ===
+ * @media = Bedingte Styles (wie if-Statement in Java)
+ * Wenn Bildschirmbreite <= 800px (z.B. Smartphone), dann andere Regeln
+ */
 @media (max-width: 800px) {
   .main {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr;  /* Nur 1 Spalte statt 2 - Elemente stapeln sich untereinander */
   }
 }
 </style>
+
