@@ -1,13 +1,28 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 // Formulardaten (reaktive Variablen)
 const selectedEtf = ref('S&P 500')
 const monthlyRate = ref<number>(200)
 const years = ref<number>(15)
 
-// Submit-Handler: Gibt Formulardaten in Console aus
+// Validierung: computed wird automatisch neu berechnet bei Änderungen
+const isValid = computed(() => {
+  return (
+    monthlyRate.value >= 25 &&
+    monthlyRate.value <= 10000 &&
+    years.value >= 1 &&
+    years.value <= 50
+  )
+})
+
+// Submit-Handler mit Validierung
 const handleSubmit = () => {
+  if (!isValid.value) {
+    alert('Bitte Eingaben prüfen:\n- Sparrate: 25-10.000 €\n- Laufzeit: 1-50 Jahre')
+    return
+  }
+
   console.log('Formular abgeschickt:', {
     etf: selectedEtf.value,
     rate: monthlyRate.value,
@@ -46,6 +61,7 @@ const handleSubmit = () => {
           v-model.number="monthlyRate"
           min="25"
           max="10000"
+          required
         />
       </div>
 
@@ -58,11 +74,12 @@ const handleSubmit = () => {
           v-model.number="years"
           min="1"
           max="50"
+          required
         />
       </div>
 
-      <!-- Submit-Button (kein disabled mehr) -->
-      <button type="submit">Berechnen</button>
+      <!-- Submit-Button: disabled wenn Eingaben ungültig -->
+      <button type="submit" :disabled="!isValid">Berechnen</button>
     </form>
   </section>
 </template>
@@ -107,5 +124,12 @@ button {
   background: #41b883;
   color: white;
   cursor: pointer;
+}
+
+/* Disabled-State: Button wird grau wenn Eingaben ungültig */
+button:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 </style>
