@@ -37,9 +37,11 @@
       -->
       <article class="card best">
         <h3>Best-Case</h3>
+        <!-- Gesamteinzahlung: 200€ × 15 Jahre × 12 Monate = 36.000€ -->
+        <p class="investment">Gesamteinzahlung: 36.000&nbsp;€</p>
         <!-- Ø = Durchschnittszeichen, p.a. = per annum (pro Jahr) -->
         <p>Ø Rendite: 8&nbsp;% p.a.</p>
-        <p>Nach 15 Jahren: ca. 68.000&nbsp;€</p>
+        <p><strong>Endwert: ca. 68.000&nbsp;€</strong></p>
       </article>
 
       <!--
@@ -48,8 +50,9 @@
       -->
       <article class="card base">
         <h3>Basis-Szenario</h3>
+        <p class="investment">Gesamteinzahlung: 36.000&nbsp;€</p>
         <p>Ø Rendite: 6&nbsp;% p.a.</p>
-        <p>Nach 15 Jahren: ca. 55.000&nbsp;€</p>
+        <p><strong>Endwert: ca. 55.000&nbsp;€</strong></p>
       </article>
 
       <!--
@@ -58,8 +61,9 @@
       -->
       <article class="card worst">
         <h3>Worst-Case</h3>
+        <p class="investment">Gesamteinzahlung: 36.000&nbsp;€</p>
         <p>Ø Rendite: 3&nbsp;% p.a.</p>
-        <p>Nach 15 Jahren: ca. 42.000&nbsp;€</p>
+        <p><strong>Endwert: ca. 42.000&nbsp;€</strong></p>
       </article>
     </div>
 
@@ -129,6 +133,15 @@
  */
 .card h3 {
   margin-bottom: 0.4rem;
+}
+
+/**
+ * Gesamteinzahlung: kleiner und etwas blasser
+ */
+.investment {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-bottom: 0.5rem;
 }
 
 /**

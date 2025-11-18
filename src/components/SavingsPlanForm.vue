@@ -13,6 +13,7 @@ const isYearsValid = computed(() => years.value >= 1 && years.value <= 50)
 // Gesamtvalidierung (beide Felder müssen gültig sein)
 const isValid = computed(() => isRateValid.value && isYearsValid.value)
 
+
 // Submit-Handler mit Validierung
 const handleSubmit = () => {
   if (!isValid.value) {
