@@ -119,6 +119,13 @@ select {
   transition: border-color 0.2s; /* Sanfter Übergang bei Farbwechsel */
 }
 
+/* Focus-Effekt: Grüner Rahmen beim Klicken in Felder */
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #41b883;
+}
+
 /* Ungültiges Input-Feld: roter Rand */
 input.invalid {
   border-color: #e74c3c;
@@ -139,6 +146,13 @@ button {
   background: #41b883;
   color: white;
   cursor: pointer;
+  transition: all 0.2s; /* Smooth Animation für alle Effekte */
+}
+
+/* Hover-Effekt: Button hebt sich nur wenn nicht disabled */
+button:not(:disabled):hover {
+  transform: translateY(-2px); /* Hebt sich um 2px */
+  box-shadow: 0 4px 8px rgba(65, 184, 131, 0.3); /* Grüner Schatten */
 }
 
 /* Disabled-State: Button wird grau wenn Eingaben ungültig */
