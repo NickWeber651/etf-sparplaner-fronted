@@ -6,15 +6,12 @@ const selectedEtf = ref('S&P 500')
 const monthlyRate = ref<number>(200)
 const years = ref<number>(15)
 
-// Validierung: computed wird automatisch neu berechnet bei Änderungen
-const isValid = computed(() => {
-  return (
-    monthlyRate.value >= 25 &&
-    monthlyRate.value <= 10000 &&
-    years.value >= 1 &&
-    years.value <= 50
-  )
-})
+// Separate Validierung für jedes Feld (für visuelles Feedback)
+const isRateValid = computed(() => monthlyRate.value >= 25 && monthlyRate.value <= 10000)
+const isYearsValid = computed(() => years.value >= 1 && years.value <= 50)
+
+// Gesamtvalidierung (beide Felder müssen gültig sein)
+const isValid = computed(() => isRateValid.value && isYearsValid.value)
 
 // Submit-Handler mit Validierung
 const handleSubmit = () => {
@@ -59,10 +56,13 @@ const handleSubmit = () => {
           id="rate"
           type="number"
           v-model.number="monthlyRate"
+          :class="{ invalid: !isRateValid }"
           min="25"
           max="10000"
           required
         />
+        <!-- Fehlermeldung erscheint nur bei ungültiger Eingabe -->
+        <span v-if="!isRateValid" class="error">Sparrate muss zwischen 25 und 10.000 € liegen</span>
       </div>
 
       <!-- Laufzeit in Jahren -->
@@ -72,10 +72,12 @@ const handleSubmit = () => {
           id="years"
           type="number"
           v-model.number="years"
+          :class="{ invalid: !isYearsValid }"
           min="1"
           max="50"
           required
         />
+        <span v-if="!isYearsValid" class="error">Laufzeit muss zwischen 1 und 50 Jahren liegen</span>
       </div>
 
       <!-- Submit-Button: disabled wenn Eingaben ungültig -->
@@ -114,6 +116,19 @@ select {
   border-radius: 0.4rem;
   border: 1px solid var(--color-border);
   font: inherit;
+  transition: border-color 0.2s; /* Sanfter Übergang bei Farbwechsel */
+}
+
+/* Ungültiges Input-Feld: roter Rand */
+input.invalid {
+  border-color: #e74c3c;
+}
+
+/* Fehlermeldung: klein und rot */
+.error {
+  font-size: 0.85rem;
+  color: #e74c3c;
+  margin-top: 0.25rem;
 }
 
 button {
