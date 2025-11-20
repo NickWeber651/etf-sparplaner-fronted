@@ -1,10 +1,21 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
+// 👉 NEU: Props vom Parent (ETF-Liste + Lade-/Fehlerzustand)
+const { etfs, loadingEtfs, errorEtfs } = defineProps<{
+  etfs: { id: number; name: string; isin: string; ter: number }[]
+  loadingEtfs: boolean
+  errorEtfs: string | null
+}>()
+
 // Formulardaten (reaktive Variablen)
-const selectedEtf = ref('S&P 500')
+const selectedEtf = ref('')         // erst mal leer, wird aus Dropdown gewählt
 const monthlyRate = ref<number>(200)
 const years = ref<number>(15)
+// Ausgewählter ETF als Objekt (oder null, wenn noch keiner gewählt)
+const selectedEtfDetails = computed(() => {
+  return etfs.find(e => e.name === selectedEtf.value) ?? null
+})
 
 // Separate Validierung für jedes Feld (für visuelles Feedback)
 const isRateValid = computed(() => monthlyRate.value >= 25 && monthlyRate.value <= 10000)
@@ -13,6 +24,10 @@ const isYearsValid = computed(() => years.value >= 1 && years.value <= 50)
 // Gesamtvalidierung (beide Felder müssen gültig sein)
 const isValid = computed(() => isRateValid.value && isYearsValid.value)
 
+// Event-Definition – diese Komponente sendet ein submit-plan-Event nach oben
+const emit = defineEmits<{
+  (e: 'submit-plan', payload: { etf: string; rate: number; years: number }): void
+}>()
 
 // Submit-Handler mit Validierung
 const handleSubmit = () => {
@@ -21,13 +36,25 @@ const handleSubmit = () => {
     return
   }
 
+  if (!selectedEtf.value) {
+    alert('Bitte einen ETF auswählen.')
+    return
+  }
+
+  emit('submit-plan', {
+    etf: selectedEtf.value,
+    rate: monthlyRate.value,
+    years: years.value,
+  })
+
   console.log('Formular abgeschickt:', {
     etf: selectedEtf.value,
     rate: monthlyRate.value,
-    years: years.value
+    years: years.value,
   })
 }
 </script>
+
 
 <template>
   <section class="left">
@@ -41,14 +68,36 @@ const handleSubmit = () => {
     <form class="form" @submit.prevent="handleSubmit">
 
       <!-- ETF-Auswahl: v-model bindet selectedEtf an das Dropdown -->
-      <div class="form-row">
-        <label for="etf">ETF auswählen</label>
-        <select id="etf" v-model="selectedEtf">
-          <option>S&P 500</option>
-          <option>MSCI World</option>
-          <option>NASDAQ 100</option>
-        </select>
-      </div>
+     <div class="form-row">
+       <label for="etf">ETF auswählen</label>
+
+       <select id="etf" v-model="selectedEtf">
+         <option disabled value="">Bitte ETF wählen</option>
+         <option
+           v-for="e in etfs"
+           :key="e.id"
+           :value="e.name"
+         >
+           {{ e.name }} (TER: {{ (e.ter * 100).toFixed(2) }} %)
+         </option>
+       </select>
+
+       <!-- Optional: Infos zu Laden / Fehler -->
+       <span v-if="loadingEtfs" class="error" style="color: #555;">
+         ETFs werden geladen …
+       </span>
+       <span v-if="errorEtfs" class="error">
+         Fehler beim Laden der ETFs: {{ errorEtfs }}
+       </span>
+
+       <!-- 👉 NEU: Details zum ausgewählten ETF -->
+       <div v-if="selectedEtfDetails" class="etf-details">
+         <small>
+           <strong>ISIN:</strong> {{ selectedEtfDetails.isin }} |
+           <strong>TER:</strong> {{ (selectedEtfDetails.ter * 100).toFixed(2) }} % p.a.
+         </small>
+       </div>
+     </div>
 
       <!-- Sparrate: v-model.number konvertiert automatisch zu Zahl -->
       <div class="form-row">
@@ -90,6 +139,12 @@ const handleSubmit = () => {
 <style scoped>
 .left p {
   margin-bottom: 0.75rem;
+}
+
+
+.etf-details {
+  margin-top: 0.35rem;
+  color: #555;
 }
 
 .form {
