@@ -72,12 +72,12 @@ onMounted(async () => {
 
     <main class="main">
 
-  <SavingsPlanForm
-    @submit-plan="handlePlanSubmit"
-    :etfs="etfs"
-    :loading-etfs="loadingEtfs"
-    :error-etfs="errorEtfs"
-  />
+<SavingsPlanForm
+  @submit-plan="handlePlanSubmit"
+  :etfs="etfs"
+  :loading-etfs="loadingEtfs"
+  :error-etfs="errorEtfs"
+/>
 
       <ScenarioCards
         v-if="currentPlan"
@@ -100,5 +100,21 @@ onMounted(async () => {
 .roadmap { /* ... */ }
 @media (max-width: 800px) {
   .main { /* ... */ }
+
+  .nav {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .nav a {
+    text-decoration: none;
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  .nav a.router-link-active {
+    text-decoration: underline;
+  }
 }
 </style>
