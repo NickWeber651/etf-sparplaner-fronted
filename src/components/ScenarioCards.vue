@@ -156,8 +156,8 @@ const years = computed(() => props.years)
   padding: 0.75rem;                      /* Innenabstand in der Karte */
   border-radius: 0.75rem;                /* Abgerundete Ecken (12px) */
   border: 1px solid var(--color-border); /* Dünner Rahmen */
-  background: #ffffff;                   /* Weißer Hintergrund (Hex-Farbe) */
-  color: #222;                           /* Fast schwarzer Text (#000 = komplett schwarz) */
+  background: var(--color-background-soft); /* Hintergrund aus CSS-Variablen (Dark Theme Support) */
+  color: var(--color-text);              /* Textfarbe aus CSS-Variablen (Dark Theme Support) */
 
   /*
    * box-shadow = Schatten (macht Karte "schwebend")
@@ -167,7 +167,7 @@ const years = computed(() => props.years)
    * - 4px = 4 Pixel Unschärfe (blur)
    * - rgba(0,0,0,0.05) = Schwarz mit 5% Deckkraft (sehr subtil!)
    */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /**

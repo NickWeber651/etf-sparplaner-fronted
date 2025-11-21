@@ -144,7 +144,8 @@ const handleSubmit = () => {
 
 .etf-details {
   margin-top: 0.35rem;
-  color: #555;
+  color: var(--color-text);
+  opacity: 0.75;
 }
 
 .form {
@@ -172,6 +173,8 @@ select {
   border-radius: 0.4rem;
   border: 1px solid var(--color-border);
   font: inherit;
+  background: var(--color-background);
+  color: var(--color-text);
   transition: border-color 0.2s; /* Sanfter Übergang bei Farbwechsel */
 }
 
