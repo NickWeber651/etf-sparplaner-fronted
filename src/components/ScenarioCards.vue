@@ -1,14 +1,46 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 /**
- * === SZENARIO-KARTEN KOMPONENTE ===
- * Zeigt 3 verschiedene Szenarien für die Sparplan-Entwicklung:
- * - Best-Case (optimistisch)
- * - Basis (realistisch)
- * - Worst-Case (konservativ)
- *
- * Aktuell sind die Werte fest codiert (hardcoded).
- * Später kommen echte Berechnungen aus dem Backend (wie beim Aufruf einer API in Java).
+ * Props von außen:
+ * - rate: monatliche Sparrate
+ * - years: Laufzeit in Jahren
+ * - etfName: Name des ETFs
  */
+const props = defineProps<{
+  rate: number
+  years: number
+  etfName: string
+}>()
+
+// Anzahl Monate
+const months = computed(() => props.years * 12)
+
+/**
+ * Hilfsfunktion für den Sparplan-Endwert:
+ * Endwert = r * ((1 + i)^n - 1) / i
+ * r = monatliche Sparrate
+ * i = monatlicher Zinssatz
+ * n = Anzahl Monate
+ */
+function calcEndValue(monthly: number, yearlyReturn: number, months: number): number {
+  const i = yearlyReturn / 12
+  if (i === 0) {
+    return Math.round(monthly * months)
+  }
+  const endValue = monthly * ((Math.pow(1 + i, months) - 1) / i)
+  return Math.round(endValue)
+}
+
+// Drei Szenarien
+const bestCase = computed(() => calcEndValue(props.rate, 0.08, months.value))
+const baseCase = computed(() => calcEndValue(props.rate, 0.06, months.value))
+const worstCase = computed(() => calcEndValue(props.rate, 0.03, months.value))
+
+// Für das Template bequemer Zugriff auf den ETF-Namen
+const etfName = computed(() => props.etfName)
+const rate = computed(() => props.rate)
+const years = computed(() => props.years)
 </script>
 
 <template>
@@ -17,8 +49,10 @@
     class="right" = Wird in CSS verwendet für Styling
   -->
   <section class="right">
-    <h2>Szenarien (Beispielwerte)</h2>
-
+    <h2>Szenarien für {{ etfName }}</h2>
+    <p class="investment">
+      Basierend auf einer Sparrate von {{ rate }} € pro Monat und {{ years }} Jahren Laufzeit.
+    </p>
     <!--
       === KARTEN-CONTAINER ===
       <div> mit class="cards" = Container für alle drei Karten
@@ -37,10 +71,14 @@
       -->
       <article class="card best">
         <h3>Best-Case</h3>
-        <!-- Ø = Durchschnittszeichen, p.a. = per annum (pro Jahr) -->
+        <!-- Gesamteinzahlung: 200€ × 15 Jahre × 12 Monate = 36.000€ -->
+        <p class="investment">
+          Gesamteinzahlung:
+          {{ (rate * years * 12).toLocaleString('de-DE') }}&nbsp;€
+        </p>
         <p>Ø Rendite: 8&nbsp;% p.a.</p>
-        <p>Nach 15 Jahren: ca. 68.000&nbsp;€</p>
-      </article>
+  <p><strong>Endwert: ca. {{ bestCase.toLocaleString('de-DE') }}&nbsp;€</strong></p>
+        </article>
 
       <!--
         === KARTE 2: BASIS-SZENARIO ===
@@ -48,8 +86,12 @@
       -->
       <article class="card base">
         <h3>Basis-Szenario</h3>
+      <p class="investment">
+        Gesamteinzahlung:
+        {{ (rate * years * 12).toLocaleString('de-DE') }}&nbsp;€
+      </p>
         <p>Ø Rendite: 6&nbsp;% p.a.</p>
-        <p>Nach 15 Jahren: ca. 55.000&nbsp;€</p>
+  <p><strong>Endwert: ca. {{ baseCase.toLocaleString('de-DE') }}&nbsp;€</strong></p>
       </article>
 
       <!--
@@ -58,8 +100,12 @@
       -->
       <article class="card worst">
         <h3>Worst-Case</h3>
+      <p class="investment">
+        Gesamteinzahlung:
+        {{ (rate * years * 12).toLocaleString('de-DE') }}&nbsp;€
+      </p>
         <p>Ø Rendite: 3&nbsp;% p.a.</p>
-        <p>Nach 15 Jahren: ca. 42.000&nbsp;€</p>
+        <p><strong>Endwert: ca. {{ worstCase.toLocaleString('de-DE') }}&nbsp;€</strong></p>
       </article>
     </div>
 
@@ -129,6 +175,15 @@
  */
 .card h3 {
   margin-bottom: 0.4rem;
+}
+
+/**
+ * Gesamteinzahlung: kleiner und etwas blasser
+ */
+.investment {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-bottom: 0.5rem;
 }
 
 /**
