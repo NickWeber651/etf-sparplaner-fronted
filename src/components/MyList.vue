@@ -105,10 +105,6 @@ onMounted(async () => {
       </li>
     </ul>
 
-    <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">
-      Hinweis: Dieses Tool ist ein Studienprojekt und keine Anlageberatung.
-      Investitionen in ETFs unterliegen Marktschwankungen und Risiken.
-    </p>
 
     <hr style="margin: 2rem 0;" />
 
