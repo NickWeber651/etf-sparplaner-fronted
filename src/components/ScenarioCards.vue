@@ -108,15 +108,6 @@ const years = computed(() => props.years)
         <p><strong>Endwert: ca. {{ worstCase.toLocaleString('de-DE') }}&nbsp;€</strong></p>
       </article>
     </div>
-
-    <!--
-      === DISCLAIMER (Haftungsausschluss) ===
-      Wichtig: Keine Anlageberatung!
-    -->
-    <p class="disclaimer">
-      Alle Werte sind nur Beispielzahlen für das UI-Design und keine echte Berechnung oder
-      Anlageempfehlung.
-    </p>
   </section>
 </template>
 
@@ -206,16 +197,6 @@ const years = computed(() => props.years)
 /* Worst-Case = Orange (Warnung, Vorsicht) */
 .worst {
   border-left: 5px solid #ef6c00;  /* Orange (Material Design) */
-}
-
-/**
- * === DISCLAIMER (Haftungsausschluss) ===
- * Kleinerer, blasserer Text am Ende
- */
-.disclaimer {
-  margin-top: 0.75rem;  /* Abstand nach oben */
-  font-size: 0.8rem;    /* 80% der normalen Schriftgröße */
-  opacity: 0.8;         /* 80% sichtbar = leicht transparent */
 }
 </style>
 

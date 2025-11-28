@@ -39,11 +39,6 @@ import AppNav from '../components/AppNav.vue'
         <li>⏳ Chart-Visualisierung mit Chart.js</li>
         <li>⏳ Speichern von Sparplänen im Benutzerkonto</li>
       </ul>
-
-      <p class="disclaimer">
-        <strong>Hinweis:</strong> Dieses Tool dient nur zu Bildungszwecken
-        und ist keine Anlageberatung.
-      </p>
     </div>
   </div>
 </template>
@@ -95,14 +90,6 @@ li {
   line-height: 1.5;
 }
 
-.disclaimer {
-  margin-top: 2rem;
-  padding: 1rem;
-  background: var(--color-background-mute);
-  border-left: 4px solid var(--vt-c-green);
-  border-radius: 0.5rem;
-  font-size: 0.9rem;
-}
 
 @media (max-width: 600px) {
   .content {
