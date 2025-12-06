@@ -125,6 +125,20 @@ async function loadSparplaene() {
 }
 
 /**
+ * === DATUM FORMATIEREN ===
+ * Konvertiert ISO-String in deutsches Format
+ * z.B. "2025-12-06" → "06.12.2025"
+ */
+function formatDate(isoString: string): string {
+  const date = new Date(isoString)
+  return date.toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
+
+/**
  * === LIFECYCLE ===
  * Beim Mounten: Sparpläne vom Backend laden
  */
@@ -193,6 +207,56 @@ onMounted(async () => {
         :etfName="selectedEtf || 'Wähle einen ETF'"
       />
     </main>
+
+    <!--
+      === GESPEICHERTE SPARPLÄNE ===
+      Liste aller im Backend gespeicherten Sparpläne
+    -->
+    <section class="saved-plans">
+      <h2>Gespeicherte Sparpläne</h2>
+
+      <!-- Ladezustand -->
+      <div v-if="isLoadingPlans" class="loading">
+        <p>⏳ Lade Sparpläne...</p>
+      </div>
+
+      <!-- Keine Sparpläne vorhanden -->
+      <div v-else-if="sparplaene.length === 0" class="empty-state">
+        <p>📭 Noch keine Sparpläne gespeichert.</p>
+        <p class="hint">Erstelle deinen ersten Sparplan mit dem Formular oben!</p>
+      </div>
+
+      <!-- Sparpläne-Liste -->
+      <div v-else class="plans-grid">
+        <div
+          v-for="plan in sparplaene"
+          :key="plan.id"
+          class="plan-card"
+        >
+          <!-- ETF-Name -->
+          <div class="plan-header">
+            <h3>{{ plan.etfName }}</h3>
+            <span class="plan-id">#{{ plan.id }}</span>
+          </div>
+
+          <!-- Details -->
+          <div class="plan-details">
+            <div class="detail-item">
+              <span class="label">Monatliche Rate:</span>
+              <span class="value">{{ plan.monatlicheRate.toFixed(2) }} €</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Laufzeit:</span>
+              <span class="value">{{ plan.laufzeitJahre }} Jahre</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Erstellt am:</span>
+              <span class="value">{{ formatDate(plan.erstelltAm) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!--
       === ROADMAP-SEKTION ===
@@ -266,6 +330,119 @@ onMounted(async () => {
  */
 .roadmap {
   margin-top: 2.5rem;
+}
+
+/**
+ * === GESPEICHERTE SPARPLÄNE ===
+ * Liste der Backend-Sparpläne
+ */
+.saved-plans {
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+}
+
+.saved-plans h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.75rem;
+}
+
+/* Ladezustand */
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-text);
+  opacity: 0.7;
+}
+
+/* Leerzustand (keine Sparpläne) */
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: var(--color-background-soft);
+  border-radius: 0.75rem;
+  border: 1px dashed var(--color-border);
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state .hint {
+  font-size: 0.95rem;
+  opacity: 0.7;
+}
+
+/* Grid für Sparpläne-Karten */
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Einzelne Sparplan-Karte */
+.plan-card {
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  transition: all 0.2s;
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #41b883;
+}
+
+/* Karten-Header (ETF-Name + ID) */
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.plan-header h3 {
+  font-size: 1rem;
+  margin: 0;
+  color: var(--color-heading);
+  flex: 1;
+  line-height: 1.3;
+}
+
+.plan-id {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.5;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+/* Details-Liste */
+.plan-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.detail-item .label {
+  color: var(--color-text);
+  opacity: 0.75;
+}
+
+.detail-item .value {
+  font-weight: 600;
+  color: var(--color-heading);
 }
 
 /**
