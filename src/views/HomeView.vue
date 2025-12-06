@@ -15,6 +15,7 @@ import AppHeader from '../components/AppHeader.vue'
 import SavingsPlanForm from '../components/SavingsPlanForm.vue'
 import ScenarioCards from '../components/ScenarioCards.vue'
 import MyList from '../components/MyList.vue'
+import { createSparplan, getSparplaene, type SparplanResponse } from '../services/sparplanApi'
 
 /**
  * === ETF-DATEN ===
@@ -37,23 +38,99 @@ const monthlyRate = ref(200)
 const years = ref(15)
 
 /**
+ * === BACKEND-STATE ===
+ * Für Speichern und Laden von Sparplänen
+ */
+const isSaving = ref(false)              // Wird Sparplan gerade gespeichert?
+const isLoadingPlans = ref(false)        // Werden Sparpläne gerade geladen?
+const errorMessage = ref<string | null>(null)     // Fehlermeldung
+const successMessage = ref<string | null>(null)   // Erfolgsmeldung
+const sparplaene = ref<SparplanResponse[]>([])    // Liste aller gespeicherten Sparpläne
+
+/**
  * === EVENT-HANDLER ===
  * Wird aufgerufen wenn SavingsPlanForm submitted wird
  */
-function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
+async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
+  // State für Szenarien-Berechnung (bestehende Logik)
   selectedEtf.value = payload.etf
   monthlyRate.value = payload.rate
   years.value = payload.years
 
   console.log('✅ Sparplan berechnet:', payload)
+
+  // === NEU: Backend-Integration ===
+  // Fehlermeldungen zurücksetzen
+  errorMessage.value = null
+  successMessage.value = null
+  isSaving.value = true
+
+  try {
+    // ETF-Name mit TER formatieren (wie im Dropdown angezeigt)
+    const selectedEtfObj = etfs.value.find(e => e.name === payload.etf)
+    const etfNameFormatted = selectedEtfObj
+      ? `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
+      : payload.etf
+
+    // Sparplan im Backend speichern
+    const savedPlan = await createSparplan({
+      etfName: etfNameFormatted,
+      monatlicheRate: payload.rate,
+      laufzeitJahre: payload.years,
+    })
+
+    console.log('💾 Sparplan im Backend gespeichert:', savedPlan)
+
+    // Erfolgsmeldung anzeigen
+    successMessage.value = '✅ Sparplan erfolgreich gespeichert!'
+
+    // Sparpläne-Liste neu laden
+    await loadSparplaene()
+
+    // Erfolgsmeldung nach 3 Sekunden ausblenden
+    setTimeout(() => {
+      successMessage.value = null
+    }, 3000)
+
+  } catch (error) {
+    // Fehlerbehandlung
+    console.error('❌ Fehler beim Speichern:', error)
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : 'Fehler beim Speichern des Sparplans'
+  } finally {
+    isSaving.value = false
+  }
+}
+
+/**
+ * === SPARPLÄNE VOM BACKEND LADEN ===
+ */
+async function loadSparplaene() {
+  isLoadingPlans.value = true
+  errorMessage.value = null
+
+  try {
+    const plans = await getSparplaene()
+    sparplaene.value = plans
+    console.log('📋 Sparpläne geladen:', plans.length, 'Einträge')
+  } catch (error) {
+    console.error('❌ Fehler beim Laden der Sparpläne:', error)
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : 'Fehler beim Laden der Sparpläne'
+  } finally {
+    isLoadingPlans.value = false
+  }
 }
 
 /**
  * === LIFECYCLE ===
- * Später: ETFs vom Backend laden
+ * Beim Mounten: Sparpläne vom Backend laden
  */
-onMounted(() => {
+onMounted(async () => {
   console.log('🚀 HomeView geladen - ETFs bereit')
+  await loadSparplaene()
 })
 </script>
 
@@ -85,14 +162,24 @@ onMounted(() => {
     -->
     <main class="main">
       <!--
+        === FEEDBACK-MESSAGES ===
+        Erfolgs- und Fehlermeldungen über dem Formular
+      -->
+      <div v-if="successMessage || errorMessage" class="messages">
+        <div v-if="successMessage" class="message success">{{ successMessage }}</div>
+        <div v-if="errorMessage" class="message error">{{ errorMessage }}</div>
+      </div>
+
+      <!--
         === LINKE SPALTE: FORMULAR ===
-        Props: ETF-Daten übergeben
+        Props: ETF-Daten + Speicherzustand übergeben
         Event: @submit-plan hört auf das submit-Event
       -->
       <SavingsPlanForm
         :etfs="etfs"
         :loadingEtfs="loadingEtfs"
         :errorEtfs="errorEtfs"
+        :isSaving="isSaving"
         @submit-plan="handleSubmitPlan"
       />
 
@@ -143,6 +230,34 @@ onMounted(() => {
   grid-template-columns: 1.2fr 1fr; /* Links breiter als rechts (1.2:1 Verhältnis) */
   gap: 2rem;                        /* 2rem Abstand zwischen den Spalten */
   align-items: flex-start;          /* Elemente oben ausrichten */
+}
+
+/**
+ * === FEEDBACK-MESSAGES ===
+ * Erfolgs- und Fehlermeldungen
+ */
+.messages {
+  grid-column: 1 / -1;  /* Über beide Spalten */
+  margin-bottom: 1rem;
+}
+
+.message {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.message.success {
+  background: rgba(65, 184, 131, 0.15);
+  border: 1px solid #41b883;
+  color: #41b883;
+}
+
+.message.error {
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
 }
 
 /**

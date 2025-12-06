@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-// 👉 NEU: Props vom Parent (ETF-Liste + Lade-/Fehlerzustand)
-const { etfs, loadingEtfs, errorEtfs } = defineProps<{
+// 👉 NEU: Props vom Parent (ETF-Liste + Lade-/Fehlerzustand + Speicherzustand)
+const { etfs, loadingEtfs, errorEtfs, isSaving } = defineProps<{
   etfs: { id: number; name: string; isin: string; ter: number }[]
   loadingEtfs: boolean
   errorEtfs: string | null
+  isSaving?: boolean  // Optional: Wird Sparplan gerade gespeichert?
 }>()
 
 // Formulardaten (reaktive Variablen)
@@ -130,8 +131,10 @@ const handleSubmit = () => {
         <span v-if="!isYearsValid" class="error">Laufzeit muss zwischen 1 und 50 Jahren liegen</span>
       </div>
 
-      <!-- Submit-Button: disabled wenn Eingaben ungültig -->
-      <button type="submit" :disabled="!isValid">Berechnen</button>
+      <!-- Submit-Button: disabled wenn Eingaben ungültig oder beim Speichern -->
+      <button type="submit" :disabled="!isValid || isSaving">
+        {{ isSaving ? 'Speichern...' : 'Berechnen & Speichern' }}
+      </button>
     </form>
   </section>
 </template>
