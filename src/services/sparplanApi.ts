@@ -11,6 +11,8 @@
  * - Environment Variables: Unterschiedliche URLs für Dev/Prod
  */
 
+import { getToken } from './authApi'
+
 /**
  * === BASE URL ===
  * Die Basis-URL des Backends wird aus den Environment-Variablen gelesen.
@@ -21,6 +23,21 @@
  * Fallback auf localhost:8080 für lokale Entwicklung ohne .env-Datei.
  */
 const BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL || 'http://localhost:8080'
+
+/**
+ * === AUTH-HEADER HELPER ===
+ * Erstellt die Headers mit Authorization Bearer Token
+ */
+function getAuthHeaders(): HeadersInit {
+  const token = getToken()
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
+}
 
 /**
  * === TYPESCRIPT INTERFACES ===
@@ -71,15 +88,17 @@ export async function createSparplan(formData: SparplanRequest): Promise<Sparpla
     // fetch() = JavaScript-Standard für HTTP-Requests (wie HttpClient in Java)
     const response = await fetch(`${BASE_URL}/api/sparplaene`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       // JSON.stringify() konvertiert JavaScript-Objekt zu JSON-String
       body: JSON.stringify(formData),
     })
 
     // HTTP-Status prüfen (2xx = Erfolg)
     if (!response.ok) {
+      // Bei 401 Unauthorized: Token ungültig oder abgelaufen
+      if (response.status === 401) {
+        throw new Error('Bitte melde dich erneut an.')
+      }
       // Fehler-Details vom Backend auslesen
       const errorData = await response.json().catch(() => ({ message: 'Unbekannter Fehler' }))
       throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
@@ -106,12 +125,14 @@ export async function getSparplaene(): Promise<SparplanResponse[]> {
   try {
     const response = await fetch(`${BASE_URL}/api/sparplaene`, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers: getAuthHeaders(),
     })
 
     if (!response.ok) {
+      // Bei 401 Unauthorized: Token ungültig oder abgelaufen
+      if (response.status === 401) {
+        throw new Error('Bitte melde dich erneut an.')
+      }
       const errorData = await response.json().catch(() => ({ message: 'Unbekannter Fehler' }))
       throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
     }
