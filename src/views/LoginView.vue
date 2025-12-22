@@ -10,6 +10,7 @@
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { login } from '../services/authApi'
 
 /**
  * === REACTIVE STATE ===
@@ -18,8 +19,10 @@ import { useRouter } from 'vue-router'
  */
 const email = ref('')
 const password = ref('')
-// Router wird später für Navigation nach Login gebraucht
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const isLoading = ref(false)           // Zeigt Ladezustand an
+const errorMessage = ref<string | null>(null)  // Fehlermeldung
+
+// Router für Navigation nach Login
 const router = useRouter()
 
 /**
@@ -27,13 +30,16 @@ const router = useRouter()
  * Wird beim Absenden des Formulars aufgerufen
  * @submit.prevent verhindert Seitenreload (wie preventDefault() in JavaScript)
  *
- * Später: REST-API-Call ans Backend (wie HttpClient in Java)
- * Beispiel: POST /api/auth/login mit { email, password }
+ * Sendet POST /api/auth/login ans Backend
+ * Bei Erfolg: Token wird gespeichert, Redirect zu Home
  */
-function handleLogin() {
+async function handleLogin() {
+  // Fehlermeldung zurücksetzen
+  errorMessage.value = null
+
   // Einfache Validierung
   if (!email.value || !password.value) {
-    alert('Bitte fülle alle Felder aus!')
+    errorMessage.value = 'Bitte fülle alle Felder aus!'
     return
   }
 
@@ -43,13 +49,26 @@ function handleLogin() {
     password: '***' // Passwort nie loggen in Production!
   })
 
-  // TODO: Später API-Call implementieren
-  // const response = await fetch('/api/auth/login', { ... })
-  // if (response.ok) {
-  //   router.push('/')
-  // }
+  // Ladezustand aktivieren
+  isLoading.value = true
 
-  alert('Login-Funktion kommt später (Backend-Integration)')
+  try {
+    // API-Call zum Backend
+    await login(email.value, password.value)
+
+    // Erfolg: Zur Startseite navigieren
+    console.log('✅ Login erfolgreich, navigiere zu Home...')
+    router.push('/')
+
+  } catch (error) {
+    // Fehlerbehandlung
+    console.error('❌ Login fehlgeschlagen:', error)
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : 'Login fehlgeschlagen. Bitte versuche es erneut.'
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -76,6 +95,11 @@ function handleLogin() {
       -->
       <form @submit.prevent="handleLogin">
 
+        <!-- === FEHLERMELDUNG === -->
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+
         <!-- === E-MAIL-FELD === -->
         <div class="form-group">
           <label for="login-email">E-Mail-Adresse</label>
@@ -90,6 +114,7 @@ function handleLogin() {
             type="email"
             placeholder="name@beispiel.de"
             required
+            :disabled="isLoading"
           />
         </div>
 
@@ -102,11 +127,14 @@ function handleLogin() {
             type="password"
             placeholder="••••••••"
             required
+            :disabled="isLoading"
           />
         </div>
 
         <!-- === SUBMIT-BUTTON === -->
-        <button type="submit" class="btn btn-primary">Anmelden</button>
+        <button type="submit" class="btn btn-primary" :disabled="isLoading">
+          {{ isLoading ? 'Wird angemeldet...' : 'Anmelden' }}
+        </button>
 
         <!-- === PASSWORT VERGESSEN LINK === -->
         <p class="forgot-link">
@@ -270,6 +298,21 @@ function handleLogin() {
   margin-top: 0.75rem;  /* Abstand nach oben */
   font-size: 0.875rem;  /* 14px Schriftgröße */
   text-align: center;   /* Zentriert */
+}
+
+/**
+ * === FEHLERMELDUNG ===
+ * Rote Box für Fehler bei Login/Registrierung
+ */
+.error-message {
+  background-color: rgba(239, 68, 68, 0.1);  /* Rot mit 10% Deckkraft */
+  border: 1px solid rgba(239, 68, 68, 0.3);  /* Roter Rahmen */
+  color: #ef4444;                             /* Roter Text */
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  text-align: center;
 }
 
 /**
