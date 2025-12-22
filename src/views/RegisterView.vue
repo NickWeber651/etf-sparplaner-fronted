@@ -11,6 +11,7 @@
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { register } from '../services/authApi'
 
 /**
  * === REACTIVE STATE ===
@@ -21,8 +22,11 @@ const email = ref('')
 const password = ref('')
 const passwordConfirm = ref('')            // Passwort-Wiederholung
 const termsAccepted = ref(false)           // Checkbox-Status (boolean)
-// Router wird später für Navigation nach Registrierung gebraucht
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const isLoading = ref(false)               // Ladezustand
+const errorMessage = ref<string | null>(null)      // Fehlermeldung
+const successMessage = ref<string | null>(null)    // Erfolgsmeldung
+
+// Router für Navigation nach Registrierung
 const router = useRouter()
 
 /**
@@ -35,16 +39,20 @@ const router = useRouter()
  * 3. Nutzungsbedingungen akzeptiert?
  * 4. E-Mail-Format korrekt? (Browser prüft das bei type="email")
  */
-function handleRegister() {
+async function handleRegister() {
+  // Meldungen zurücksetzen
+  errorMessage.value = null
+  successMessage.value = null
+
   // Validierung 1: Passwörter vergleichen
   if (password.value !== passwordConfirm.value) {
-    alert('Die Passwörter stimmen nicht überein!')
+    errorMessage.value = 'Die Passwörter stimmen nicht überein!'
     return  // Frühes Return (wie Guard Clause in Clean Code)
   }
 
   // Validierung 2: Nutzungsbedingungen akzeptiert?
   if (!termsAccepted.value) {
-    alert('Bitte akzeptiere die Nutzungsbedingungen.')
+    errorMessage.value = 'Bitte akzeptiere die Nutzungsbedingungen.'
     return
   }
 
@@ -55,18 +63,31 @@ function handleRegister() {
     termsAccepted: termsAccepted.value
   })
 
-  // TODO: Später API-Call implementieren
-  // const response = await fetch('/api/auth/register', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email: email.value, password: password.value })
-  // })
-  // if (response.ok) {
-  //   alert('Registrierung erfolgreich!')
-  //   router.push('/login')
-  // }
+  // Ladezustand aktivieren
+  isLoading.value = true
 
-  alert('Registrierungs-Funktion kommt später (Backend-Integration)')
+  try {
+    // API-Call zum Backend
+    await register(email.value, password.value)
+
+    // Erfolg: Meldung anzeigen und zur Startseite navigieren
+    console.log('✅ Registrierung erfolgreich, navigiere zu Home...')
+    successMessage.value = 'Registrierung erfolgreich! Du wirst weitergeleitet...'
+
+    // Kurz warten, dann zur Startseite navigieren (Auto-Login)
+    setTimeout(() => {
+      router.push('/')
+    }, 1500)
+
+  } catch (error) {
+    // Fehlerbehandlung
+    console.error('❌ Registrierung fehlgeschlagen:', error)
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : 'Registrierung fehlgeschlagen. Bitte versuche es erneut.'
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -92,6 +113,16 @@ function handleRegister() {
       -->
       <form @submit.prevent="handleRegister">
 
+        <!-- === FEHLERMELDUNG === -->
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+
+        <!-- === ERFOLGSMELDUNG === -->
+        <div v-if="successMessage" class="success-message">
+          {{ successMessage }}
+        </div>
+
         <!-- === E-MAIL-FELD === -->
         <div class="form-group">
           <label for="reg-email">E-Mail-Adresse</label>
@@ -105,6 +136,7 @@ function handleRegister() {
             type="email"
             placeholder="name@beispiel.de"
             required
+            :disabled="isLoading"
           />
         </div>
 
@@ -117,6 +149,7 @@ function handleRegister() {
             type="password"
             placeholder="••••••••"
             required
+            :disabled="isLoading"
           />
         </div>
 
@@ -133,6 +166,7 @@ function handleRegister() {
             type="password"
             placeholder="••••••••"
             required
+            :disabled="isLoading"
           />
         </div>
 
@@ -149,6 +183,7 @@ function handleRegister() {
             id="reg-terms"
             v-model="termsAccepted"
             type="checkbox"
+            :disabled="isLoading"
           />
           <label for="reg-terms">
             Ich akzeptiere die Datenschutzbestimmungen und Nutzungsbedingungen.
@@ -156,7 +191,9 @@ function handleRegister() {
         </div>
 
         <!-- === SUBMIT-BUTTON === -->
-        <button type="submit" class="btn btn-primary">Konto erstellen</button>
+        <button type="submit" class="btn btn-primary" :disabled="isLoading">
+          {{ isLoading ? 'Wird erstellt...' : 'Konto erstellen' }}
+        </button>
 
         <!--
           === LOGIN-LINK ===
@@ -320,6 +357,34 @@ function handleRegister() {
   filter: brightness(1.05);
   transform: translateY(-1px);
   box-shadow: 0 10px 24px rgba(16, 185, 129, 0.35);
+}
+
+/**
+ * === FEHLERMELDUNG ===
+ */
+.error-message {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/**
+ * === ERFOLGSMELDUNG ===
+ */
+.success-message {
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  text-align: center;
 }
 
 /**
