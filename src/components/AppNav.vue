@@ -8,6 +8,29 @@
  * - Schnellere Navigation
  * - Automatische "active" CSS-Klasse für aktuelle Route
  */
+
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { isAuthenticated, getUserEmail, logout } from '../services/authApi'
+
+const router = useRouter()
+
+/**
+ * Reaktive Computed-Properties für Auth-Status
+ * (werden automatisch aktualisiert wenn sich localStorage ändert)
+ */
+const loggedIn = computed(() => isAuthenticated())
+const userEmail = computed(() => getUserEmail())
+
+/**
+ * Logout-Handler
+ * Löscht Token und navigiert zu Login-Seite
+ */
+function handleLogout() {
+  logout()
+  console.log('👋 Logout erfolgreich')
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -24,8 +47,18 @@
     -->
     <RouterLink to="/" class="nav-link">Home</RouterLink>
     <RouterLink to="/about" class="nav-link">Über uns</RouterLink>
-    <RouterLink to="/login" class="nav-link nav-link-primary">Anmelden</RouterLink>
-    <RouterLink to="/register" class="nav-link nav-link-secondary">Registrieren</RouterLink>
+
+    <!-- === EINGELOGGT: User-Email + Logout === -->
+    <template v-if="loggedIn">
+      <span class="user-email">{{ userEmail }}</span>
+      <button @click="handleLogout" class="nav-link nav-link-logout">Abmelden</button>
+    </template>
+
+    <!-- === NICHT EINGELOGGT: Login + Register === -->
+    <template v-else>
+      <RouterLink to="/login" class="nav-link nav-link-primary">Anmelden</RouterLink>
+      <RouterLink to="/register" class="nav-link nav-link-secondary">Registrieren</RouterLink>
+    </template>
   </nav>
 </template>
 
@@ -103,6 +136,35 @@
 .nav-link-secondary:hover {
   border-color: var(--color-border-hover);
   background-color: var(--color-background-soft);
+}
+
+/**
+ * === USER EMAIL ===
+ * Zeigt die Email des eingeloggten Users
+ */
+.user-email {
+  padding: 0.5rem 1rem;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/**
+ * === LOGOUT BUTTON ===
+ * Roter Button zum Abmelden
+ */
+.nav-link-logout {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.nav-link-logout:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
 }
 </style>
 
