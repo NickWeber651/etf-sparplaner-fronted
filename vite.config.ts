@@ -13,4 +13,17 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // SPA Fallback für Render/Produktion
+  preview: {
+    port: 4173,
+    strictPort: false,
+  },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
 })
