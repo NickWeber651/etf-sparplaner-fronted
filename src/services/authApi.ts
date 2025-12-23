@@ -175,3 +175,37 @@ export async function register(email: string, password: string): Promise<AuthRes
   }
 }
 
+/**
+ * POST /api/auth/reset-password - Passwort zurücksetzen (OHNE E-Mail-Versand)
+ *
+ * @param email - E-Mail-Adresse des Benutzers
+ * @param newPassword - Neues Passwort
+ * @returns Promise<void>
+ * @throws Error wenn E-Mail nicht gefunden oder Netzwerkfehler
+ */
+export async function resetPassword(email: string, newPassword: string): Promise<void> {
+  try {
+    const response = await fetch(`${BASE_URL}/api/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, newPassword }),
+    })
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('E-Mail-Adresse nicht gefunden')
+      }
+      const errorData = await response.json().catch(() => ({ message: 'Unbekannter Fehler' }))
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    console.log('✅ Passwort erfolgreich zurückgesetzt für:', email)
+
+  } catch (error) {
+    console.error('❌ Passwort-Reset fehlgeschlagen:', error)
+    throw error
+  }
+}
+

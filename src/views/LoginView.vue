@@ -138,7 +138,7 @@ async function handleLogin() {
 
         <!-- === PASSWORT VERGESSEN LINK === -->
         <p class="forgot-link">
-          <a href="#" class="link-plain">Passwort vergessen?</a>
+          <RouterLink to="/forgot-password" class="link-plain">Passwort vergessen?</RouterLink>
         </p>
 
         <!--
