@@ -5,6 +5,7 @@
  * onMounted → Funktion, die einmal ausgeführt wird, wenn die Komponente "auf die Seite kommt"
  */
 import { ref, onMounted } from 'vue'
+import { getSparplaene, deleteSparplan, type SparplanResponse } from '../services/sparplanApi'
 
 /**
  * === DATEN FÜR M2 (v-for über features) ==========================
@@ -27,6 +28,39 @@ const features: string[] = [
 const loading = ref(false)               // true, solange der Request noch läuft
 const error   = ref<string | null>(null) // Fehlermeldung (oder null)
 const etfs    = ref<unknown[]>([])       // Antwortdaten vom Backend
+
+/**
+ * === ZUSTAND FÜR SPARPLÄNE (CRUD / Use Case: Löschen) ===========
+ * Lädt die gespeicherten Sparpläne des eingeloggten Users und erlaubt das Löschen.
+ */
+const sparplaeneLoading = ref(false)
+const sparplaeneError = ref<string | null>(null)
+const sparplaene = ref<SparplanResponse[]>([])
+
+async function loadSparplaene() {
+  sparplaeneLoading.value = true
+  sparplaeneError.value = null
+
+  try {
+    sparplaene.value = await getSparplaene()
+  } catch (e: unknown) {
+    sparplaeneError.value = e instanceof Error ? (e.message || 'Fehler beim Laden der Sparpläne') : 'Fehler beim Laden der Sparpläne'
+  } finally {
+    sparplaeneLoading.value = false
+  }
+}
+
+async function onDeleteSparplan(id: number) {
+  if (!confirm('Sparplan wirklich löschen?')) return
+
+  try {
+    await deleteSparplan(id)
+    // UI sofort aktualisieren
+    sparplaene.value = sparplaene.value.filter(p => p.id !== id)
+  } catch (e: unknown) {
+    sparplaeneError.value = e instanceof Error ? (e.message || 'Fehler beim Löschen des Sparplans') : 'Fehler beim Löschen des Sparplans'
+  }
+}
 
 /**
  * === BASIS-URL DES BACKENDS =====================================
@@ -71,6 +105,11 @@ onMounted(async () => {
     // 6. In jedem Fall (Erfolg oder Fehler): loading wieder auf false
     loading.value = false
   }
+})
+
+// Spart separaten Use Case-Block (Sparpläne laden/löschen) vom /etfs Demo-Block
+onMounted(async () => {
+  await loadSparplaene()
 })
 </script>
 
@@ -138,6 +177,43 @@ onMounted(async () => {
 {{ etfs }}
       </pre>
     </div>
+    <hr style="margin: 2rem 0;" />
+
+    <!-- Use Case: Gespeicherte Sparpläne anzeigen & löschen -->
+    <h3>Use Case: Gespeicherte Sparpläne</h3>
+
+    <p v-if="sparplaeneLoading">
+      Lade gespeicherte Sparpläne ...
+    </p>
+
+    <p v-else-if="sparplaeneError">
+      Fehler: {{ sparplaeneError }}
+    </p>
+
+    <div v-else>
+      <p v-if="sparplaene.length === 0">
+        Noch keine Sparpläne gespeichert.
+      </p>
+
+      <ul v-else class="sparplan-list">
+        <li v-for="p in sparplaene" :key="p.id" class="sparplan-item">
+          <div class="sparplan-main">
+            <div class="sparplan-title"><strong>{{ p.etfName }}</strong></div>
+            <div class="sparplan-meta">
+              Rate: {{ p.monatlicheRate }} € · Laufzeit: {{ p.laufzeitJahre }} Jahre · Erstellt: {{ p.erstelltAm }}
+            </div>
+          </div>
+
+          <button class="danger" type="button" @click="onDeleteSparplan(p.id)">
+            Löschen
+          </button>
+        </li>
+      </ul>
+
+      <button class="secondary" type="button" @click="loadSparplaene" style="margin-top: 0.75rem;">
+        Aktualisieren
+      </button>
+    </div>
   </section>
 </template>
 
@@ -170,3 +246,52 @@ pre {
   overflow-x: auto;     /* horizontales Scrollen, falls die Zeile zu lang ist */
 }
 </style>
+
+.sparplan-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.sparplan-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.sparplan-meta {
+  color: #4b5563;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+button.danger {
+  background: #dc2626;
+  border: none;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button.danger:hover {
+  background: #b91c1c;
+}
+
+button.secondary {
+  background: #e5e7eb;
+  border: none;
+  color: #111827;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button.secondary:hover {
+  background: #d1d5db;
+}
