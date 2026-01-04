@@ -4,8 +4,8 @@ import SavingsPlanForm from '../SavingsPlanForm.vue'
 
 // Minimaler Mock: SavingsPlanForm erwartet diese Props (required)
 const etfsMock = [
-  { name: 'S&P 500 (TER: 0.07 %)' },
-  { name: 'MSCI World (TER: 0.20 %)' },
+  { id: 1, name: 'S&P 500 (TER: 0.07 %)', isin: 'US0000000001', ter: 0.07 },
+  { id: 2, name: 'MSCI World (TER: 0.20 %)', isin: 'IE00B0M62Q58', ter: 0.20 },
 ]
 
 function mountSavingsPlanForm() {
@@ -14,7 +14,7 @@ function mountSavingsPlanForm() {
       etfs: etfsMock,
       loadingEtfs: false,
       // je nach Komponente ist das string|null; null ist meist ok, sonst ''
-      errorEtfs: null as any,
+     errorEtfs: '',
     },
   })
 }
@@ -69,7 +69,7 @@ describe('SavingsPlanForm', () => {
     const wrapper = mountSavingsPlanForm()
 
     // Gültige Werte setzen (inkl. ETF-Auswahl, falls diese fürs Enable nötig ist)
-    await wrapper.find('#etf').setValue(etfsMock[0].name)
+    await wrapper.find('#etf').setValue(etfsMock[0]!.name)
     await wrapper.find('#rate').setValue(200)
     await wrapper.find('#years').setValue(15)
     await wrapper.vm.$nextTick()
