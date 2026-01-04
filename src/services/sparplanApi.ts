@@ -28,14 +28,19 @@ const BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL || 'http://localhost:8080
  * === AUTH-HEADER HELPER ===
  * Erstellt die Headers mit Authorization Bearer Token
  */
-function getAuthHeaders(): HeadersInit {
+function getAuthHeaders(): Record<string, string> {
   const token = getToken()
-  const headers: HeadersInit = {
+
+  // Plain object so we can safely add properties in TypeScript
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   }
+
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    headers.Authorization = `Bearer ${token}`
   }
+
   return headers
 }
 
@@ -147,6 +152,44 @@ export async function getSparplaene(): Promise<SparplanResponse[]> {
 }
 
 /**
+ * DELETE /api/sparplaene/{id} - Einen gespeicherten Sparplan löschen
+ *
+ * @param id - ID des Sparplans
+ * @returns Promise<void>
+ * @throws Error bei HTTP-Fehler (401/403/404/500)
+ */
+export async function deleteSparplan(id: number): Promise<void> {
+  try {
+    const response = await fetch(`${BASE_URL}/api/sparplaene/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Bitte melde dich erneut an.')
+      }
+      if (response.status === 403) {
+        throw new Error('Du darfst diesen Sparplan nicht löschen.')
+      }
+      if (response.status === 404) {
+        throw new Error('Sparplan nicht gefunden (evtl. schon gelöscht).')
+      }
+
+      // Backend kann optional JSON-Fehler liefern – robust auslesen
+      const errorData = await response.json().catch(() => ({ message: 'Unbekannter Fehler' }))
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    // Bei 204 No Content gibt es keinen Body – einfach fertig.
+    return
+  } catch (error) {
+    console.error('❌ Fehler beim Löschen des Sparplans:', error)
+    throw error
+  }
+}
+
+/**
  * === ZUSAMMENFASSUNG (für WI 3) ===
  *
  * 1. ENVIRONMENT VARIABLES
@@ -169,4 +212,3 @@ export async function getSparplaene(): Promise<SparplanResponse[]> {
  *    - API-Logik getrennt von UI-Komponenten
  *    - Wiederverwendbar und testbar
  */
-
