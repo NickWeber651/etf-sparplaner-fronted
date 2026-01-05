@@ -221,9 +221,7 @@ onMounted(async () => {
       === ROADMAP-SEKTION ===
       Feature-Liste und Projekt-Info
     -->
-    <section class="roadmap">
-      <MyList />
-    </section>
+
   </div>
 </template>
 
