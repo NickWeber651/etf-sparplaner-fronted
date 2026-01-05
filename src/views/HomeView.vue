@@ -6,7 +6,7 @@ import SavingsPlanForm from '../components/SavingsPlanForm.vue'
 import ScenarioCards from '../components/ScenarioCards.vue'
 import MyList from '../components/MyList.vue'
 import { createSparplan } from '../services/sparplanApi'
-
+import { ETF_INFO, type EtfInfo } from '../data/etfInfo'
 /**
  * ETF-Zusatzinfos (Mock)
  */
