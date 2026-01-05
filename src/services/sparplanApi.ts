@@ -190,6 +190,45 @@ export async function deleteSparplan(id: number): Promise<void> {
 }
 
 /**
+ * PUT /api/sparplaene/{id} - Einen gespeicherten Sparplan aktualisieren
+ *
+ * @param id - ID des Sparplans
+ * @param formData - neue Daten (etfName, monatlicheRate, laufzeitJahre)
+ * @returns Promise<SparplanResponse> - der aktualisierte Sparplan
+ * @throws Error bei HTTP-Fehler (401/403/404/500)
+ */
+export async function updateSparplan(id: number, formData: SparplanRequest): Promise<SparplanResponse> {
+  try {
+    const response = await fetch(`${BASE_URL}/api/sparplaene/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(formData),
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Bitte melde dich erneut an.')
+      }
+      if (response.status === 403) {
+        throw new Error('Du darfst diesen Sparplan nicht bearbeiten.')
+      }
+      if (response.status === 404) {
+        throw new Error('Sparplan nicht gefunden (evtl. gelöscht).')
+      }
+
+      const errorData = await response.json().catch(() => ({ message: 'Unbekannter Fehler' }))
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const data: SparplanResponse = await response.json()
+    return data
+  } catch (error) {
+    console.error('❌ Fehler beim Aktualisieren des Sparplans:', error)
+    throw error
+  }
+}
+
+/**
  * === ZUSAMMENFASSUNG (für WI 3) ===
  *
  * 1. ENVIRONMENT VARIABLES
