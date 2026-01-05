@@ -212,51 +212,10 @@ onMounted(async () => {
       === GESPEICHERTE SPARPLÄNE ===
       Liste aller im Backend gespeicherten Sparpläne
     -->
-    <section class="saved-plans">
-      <h2>Gespeicherte Sparpläne</h2>
 
-      <!-- Ladezustand -->
-      <div v-if="isLoadingPlans" class="loading">
-        <p>⏳ Lade Sparpläne...</p>
-      </div>
-
-      <!-- Keine Sparpläne vorhanden -->
-      <div v-else-if="sparplaene.length === 0" class="empty-state">
-        <p>📭 Noch keine Sparpläne gespeichert.</p>
-        <p class="hint">Erstelle deinen ersten Sparplan mit dem Formular oben!</p>
-      </div>
-
-      <!-- Sparpläne-Liste -->
-      <div v-else class="plans-grid">
-        <div
-          v-for="plan in sparplaene"
-          :key="plan.id"
-          class="plan-card"
-        >
-          <!-- ETF-Name -->
-          <div class="plan-header">
-            <h3>{{ plan.etfName }}</h3>
-            <span class="plan-id">#{{ plan.id }}</span>
-          </div>
-
-          <!-- Details -->
-          <div class="plan-details">
-            <div class="detail-item">
-              <span class="label">Monatliche Rate:</span>
-              <span class="value">{{ plan.monatlicheRate.toFixed(2) }} €</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Laufzeit:</span>
-              <span class="value">{{ plan.laufzeitJahre }} Jahre</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Erstellt am:</span>
-              <span class="value">{{ formatDate(plan.erstelltAm) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+   <section class="saved-plans">
+     <MyList />
+   </section>
 
     <!--
       === ROADMAP-SEKTION ===
