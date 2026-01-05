@@ -7,11 +7,15 @@ import ScenarioCards from '../components/ScenarioCards.vue'
 import MyList from '../components/MyList.vue'
 import { createSparplan } from '../services/sparplanApi'
 
+// ✅ Nutze deine Datei src/data/etfInfo.ts
+import { ETF_INFO, type EtfInfo } from '../data/etfInfo'
+
 const etfs = ref([
   { id: 1, name: 'S&P 500', isin: 'IE00B5BMR087', ter: 0.0007 },
   { id: 2, name: 'MSCI World', isin: 'IE00B4L5Y983', ter: 0.0020 },
   { id: 3, name: 'FTSE All-World', isin: 'IE00B3RBWM25', ter: 0.0022 },
 ])
+
 const loadingEtfs = ref(false)
 const errorEtfs = ref<string | null>(null)
 
@@ -20,69 +24,23 @@ const selectedEtf = ref('') // Name ohne "(TER: ...)"
 const monthlyRate = ref(200)
 const years = ref(15)
 
-// === ETF Zusatzinfos (Mock) ===
-const ETF_INFO = [
-  {
-    id: 1,
-    name: 'S&P 500',
-    coverage: 'USA (Large Caps)',
-    regions: 'USA',
-    diversification: 'mittel',
-    volatility1y: 17.0,
-    maxDrawdown1y: -14.0,
-    notes: [
-      'Stark USA-lastig, hoher Tech-Anteil möglich',
-      'Klumpenrisiko USA (je nach Strategie ok)',
-      'Währungsrisiko USD (je nach ETF/Share Class)',
-    ],
-  },
-  {
-    id: 2,
-    name: 'MSCI World',
-    coverage: 'Industrieländer weltweit',
-    regions: 'Welt (Developed Markets)',
-    diversification: 'hoch',
-    volatility1y: 15.5,
-    maxDrawdown1y: -12.5,
-    notes: [
-      'Breit gestreut über viele Länder/Branchen',
-      'Trotz „World“ meist hoher USA-Anteil',
-      'Guter Core-Baustein für langfristig',
-    ],
-  },
-  {
-    id: 3,
-    name: 'FTSE All-World',
-    coverage: 'Welt inkl. Schwellenländer',
-    regions: 'Welt (Developed + Emerging)',
-    diversification: 'sehr hoch',
-    volatility1y: 16.2,
-    maxDrawdown1y: -13.2,
-    notes: [
-      'Noch breiter als MSCI World (inkl. Emerging Markets)',
-      'EM können Schwankungen erhöhen',
-      'Sehr guter „All-in-One“-Weltbaustein',
-    ],
-  },
-] as const
-
-type EtfInfo = (typeof ETF_INFO)[number]
-
-// ✅ TS-sicher (kein [0] Indexing)
-function normalizeEtfName(name: string): string {
+// ✅ TS-sicher: kein split()[0]
+function normalizeEtfName(input: unknown): string {
+  const name = typeof input === 'string' ? input : ''
   const marker = ' (TER'
   const idx = name.indexOf(marker)
   const base = idx === -1 ? name : name.slice(0, idx)
   return base.trim()
 }
 
+// === Vergleichs-Infos zum ausgewählten ETF ===
 const selectedEtfInfo = computed<EtfInfo | null>(() => {
   const key = normalizeEtfName(selectedEtf.value)
   return ETF_INFO.find(e => e.name === key) ?? null
 })
 
 function rankTextByVol(id: number) {
-  const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y)
+  const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y) // klein = stabiler
   const pos = sorted.findIndex(x => x.id === id)
   if (pos === 0) return 'am stabilsten (niedrigste Volatilität) im Vergleich'
   if (pos === sorted.length - 1) return 'am volatilsten (höchste Volatilität) im Vergleich'
@@ -90,6 +48,7 @@ function rankTextByVol(id: number) {
 }
 
 function rankTextByDrawdown(id: number) {
+  // weniger negativ ist besser, z.B. -10 > -15
   const sorted = [...ETF_INFO].sort((a, b) => b.maxDrawdown1y - a.maxDrawdown1y)
   const pos = sorted.findIndex(x => x.id === id)
   if (pos === 0) return 'hatte den geringsten Rückgang (Drawdown) im Vergleich'
@@ -117,7 +76,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   isSaving.value = true
 
   try {
-    // ✅ TS-sicher: erst in if-Block verwenden
+    // ✅ TS-sicher: find kann undefined sein → if-Block
     let etfNameFormatted = payload.etf
     const selectedEtfObj = etfs.value.find(e => e.name === chosenName)
     if (selectedEtfObj) {
@@ -132,7 +91,6 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
 
     successMessage.value = '✅ Sparplan erfolgreich gespeichert!'
     reloadKey.value += 1
-
     setTimeout(() => (successMessage.value = null), 3000)
   } catch (e) {
     errorMessage.value = e instanceof Error ? e.message : 'Fehler beim Speichern des Sparplans'
@@ -171,6 +129,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         :etfName="selectedEtf || 'Wähle einen ETF'"
       />
 
+      <!-- ✅ erscheint sobald handleSubmitPlan gelaufen ist -->
       <div v-if="selectedEtfInfo" class="etf-info">
         <h3>{{ selectedEtfInfo.name }} – Kurzprofil</h3>
 
@@ -240,6 +199,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   margin-top: 2.5rem;
 }
 
+/* ✅ ETF-Profil */
 .etf-info {
   grid-column: 1 / -1;
   margin-top: 1rem;
