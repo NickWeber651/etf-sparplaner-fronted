@@ -16,7 +16,7 @@ const loadingEtfs = ref(false)
 const errorEtfs = ref<string | null>(null)
 
 // === Auswahl / Szenario State ===
-const selectedEtf = ref('') // <- hier steht nur der "Name", ohne "(TER: ...)"
+const selectedEtf = ref('') // Name ohne "(TER: ...)"
 const monthlyRate = ref(200)
 const years = ref(15)
 
@@ -68,19 +68,21 @@ const ETF_INFO = [
 
 type EtfInfo = (typeof ETF_INFO)[number]
 
+// ✅ TS-sicher (kein [0] Indexing)
 function normalizeEtfName(name: string): string {
-  // Falls mal "XYZ (TER: ...)" rein kommt -> nur den Namen behalten
-  return name.split(' (TER')[0].trim()
+  const marker = ' (TER'
+  const idx = name.indexOf(marker)
+  const base = idx === -1 ? name : name.slice(0, idx)
+  return base.trim()
 }
 
-// === Vergleichs-Infos zum ausgewählten ETF ===
 const selectedEtfInfo = computed<EtfInfo | null>(() => {
   const key = normalizeEtfName(selectedEtf.value)
   return ETF_INFO.find(e => e.name === key) ?? null
 })
 
 function rankTextByVol(id: number) {
-  const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y) // klein = stabiler
+  const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y)
   const pos = sorted.findIndex(x => x.id === id)
   if (pos === 0) return 'am stabilsten (niedrigste Volatilität) im Vergleich'
   if (pos === sorted.length - 1) return 'am volatilsten (höchste Volatilität) im Vergleich'
@@ -88,7 +90,6 @@ function rankTextByVol(id: number) {
 }
 
 function rankTextByDrawdown(id: number) {
-  // weniger negativ ist besser, z.B. -10 > -15
   const sorted = [...ETF_INFO].sort((a, b) => b.maxDrawdown1y - a.maxDrawdown1y)
   const pos = sorted.findIndex(x => x.id === id)
   if (pos === 0) return 'hatte den geringsten Rückgang (Drawdown) im Vergleich'
@@ -116,10 +117,12 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   isSaving.value = true
 
   try {
+    // ✅ TS-sicher: erst in if-Block verwenden
+    let etfNameFormatted = payload.etf
     const selectedEtfObj = etfs.value.find(e => e.name === chosenName)
-    const etfNameFormatted = selectedEtfObj
-      ? `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
-      : payload.etf
+    if (selectedEtfObj) {
+      etfNameFormatted = `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
+    }
 
     await createSparplan({
       etfName: etfNameFormatted,
@@ -168,7 +171,6 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         :etfName="selectedEtf || 'Wähle einen ETF'"
       />
 
-      <!-- ETF-Kurzprofil: erscheint sobald selectedEtf gesetzt ist (nach "Berechnen") -->
       <div v-if="selectedEtfInfo" class="etf-info">
         <h3>{{ selectedEtfInfo.name }} – Kurzprofil</h3>
 
@@ -177,14 +179,14 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         <p><strong>Diversifikation:</strong> {{ selectedEtfInfo.diversification }}</p>
 
         <div class="metrics">
-          <div><strong>Volatilität (1J):</strong> {{ selectedEtfInfo!.volatility1y.toFixed(1) }}%</div>
-          <div><strong>Max. Drawdown (1J):</strong> {{ selectedEtfInfo!.maxDrawdown1y.toFixed(1) }}%</div>
-          <div><strong>Einordnung:</strong> {{ rankTextByVol(selectedEtfInfo!.id) }}</div>
-          <div><strong>Stabilität:</strong> {{ rankTextByDrawdown(selectedEtfInfo!.id) }}</div>
+          <div><strong>Volatilität (1J):</strong> {{ selectedEtfInfo.volatility1y.toFixed(1) }}%</div>
+          <div><strong>Max. Drawdown (1J):</strong> {{ selectedEtfInfo.maxDrawdown1y.toFixed(1) }}%</div>
+          <div><strong>Einordnung:</strong> {{ rankTextByVol(selectedEtfInfo.id) }}</div>
+          <div><strong>Stabilität:</strong> {{ rankTextByDrawdown(selectedEtfInfo.id) }}</div>
         </div>
 
         <ul>
-          <li v-for="n in selectedEtfInfo!.notes" :key="n">{{ n }}</li>
+          <li v-for="n in selectedEtfInfo.notes" :key="n">{{ n }}</li>
         </ul>
       </div>
     </main>
@@ -247,20 +249,11 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   background: rgba(17, 24, 39, 0.35);
 }
 
-.etf-info h3 {
-  margin: 0 0 0.75rem;
-}
-
 .metrics {
   margin: 0.75rem 0;
   display: grid;
   gap: 0.35rem;
   color: #cbd5e1;
-}
-
-.etf-info ul {
-  margin: 0.5rem 0 0;
-  padding-left: 1.2rem;
 }
 
 @media (max-width: 800px) {
