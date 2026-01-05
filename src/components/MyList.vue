@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import {
   getSparplaene,
   deleteSparplan,
@@ -7,14 +7,6 @@ import {
   type SparplanResponse,
   type SparplanRequest,
 } from '../services/sparplanApi'
-
-/**
- * HomeView übergibt <MyList :reloadKey="reloadKey" />
- * Wenn reloadKey sich ändert, laden wir neu.
- */
-const props = defineProps<{
-  reloadKey?: number
-}>()
 
 // --- State ---
 const loading = ref(false)
@@ -70,8 +62,7 @@ async function saveEdit(id: number) {
     sparplaene.value = sparplaene.value.map(p => (p.id === id ? updated : p))
     editingId.value = null
   } catch (e: unknown) {
-    error.value =
-      e instanceof Error ? (e.message || 'Fehler beim Bearbeiten des Sparplans') : 'Fehler beim Bearbeiten des Sparplans'
+    error.value = e instanceof Error ? (e.message || 'Fehler beim Bearbeiten des Sparplans') : 'Fehler beim Bearbeiten des Sparplans'
   } finally {
     savingId.value = null
   }
@@ -96,27 +87,19 @@ async function confirmDelete(id: number) {
     sparplaene.value = sparplaene.value.filter(p => p.id !== id)
     confirmDeleteId.value = null
   } catch (e: unknown) {
-    error.value =
-      e instanceof Error ? (e.message || 'Fehler beim Löschen des Sparplans') : 'Fehler beim Löschen des Sparplans'
+    error.value = e instanceof Error ? (e.message || 'Fehler beim Löschen des Sparplans') : 'Fehler beim Löschen des Sparplans'
   } finally {
     deletingId.value = null
   }
 }
 
-function formatDate(iso: string) {
+function formatDate(iso?: string) {
+  if (!iso) return ''
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('de-DE')
 }
 
-onMounted(loadSparplaene)
-
-// reloadKey-Trigger (wenn HomeView nach Speichern neu laden will)
-watch(
-  () => props.reloadKey,
-  () => {
-    void loadSparplaene()
-  }
-)
+onMounted(() => { void loadSparplaene() })
 </script>
 
 <template>
@@ -162,7 +145,6 @@ watch(
               <span><span class="label">Erstellt:</span> {{ formatDate(p.erstelltAm) }}</span>
             </div>
 
-            <!-- Inline Edit Panel -->
             <div v-if="editingId === p.id" class="edit-panel">
               <label class="field">
                 <span class="field-label">ETF</span>
@@ -182,7 +164,6 @@ watch(
           </div>
 
           <div class="actions">
-            <!-- Edit Mode -->
             <template v-if="editingId === p.id">
               <button class="btn btn-secondary btn-small" type="button" @click="cancelEdit" :disabled="savingId === p.id">
                 Abbrechen
@@ -194,7 +175,6 @@ watch(
               </button>
             </template>
 
-            <!-- Delete confirm -->
             <template v-else-if="confirmDeleteId === p.id">
               <button class="btn btn-secondary btn-small" type="button" @click="cancelDelete" :disabled="deletingId === p.id">
                 Abbrechen
@@ -206,7 +186,6 @@ watch(
               </button>
             </template>
 
-            <!-- Normal -->
             <template v-else>
               <button class="btn btn-ghost btn-icon" type="button" @click="startEdit(p)" aria-label="Bearbeiten" title="Bearbeiten">
                 ✏️
@@ -224,259 +203,56 @@ watch(
 </template>
 
 <style scoped>
-/* Layout */
-.page {
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 0.5rem 0.25rem 0;
-}
+.page { max-width: 980px; margin: 0 auto; padding: 0.5rem 0.25rem 0; }
+.header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+.title { margin:0; font-size:1.4rem; color:#e5e7eb; }
+.subtitle { margin:0.35rem 0 0; color:#9ca3af; font-size:0.95rem; }
+.hint { display:flex; align-items:center; gap:0.6rem; color:#9ca3af; padding:0.75rem 0; }
+.alert { border:1px solid rgba(220,38,38,.35); background:rgba(220,38,38,.08); color:#fca5a5; padding:0.75rem; border-radius:10px; }
+.list { list-style:none; padding:0; margin:0; display:grid; gap:0.75rem; }
+.item { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; padding:0.9rem 1rem; border-radius:14px; border:1px solid rgba(229,231,235,.12); background:rgba(17,24,39,.55); box-shadow:0 10px 30px rgba(0,0,0,.25); }
+.main { min-width:0; }
+.title-row { display:flex; align-items:center; gap:0.5rem; }
+.name { color:#e5e7eb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:58ch; }
+.chip { font-size:.8rem; color:#a7f3d0; background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.25); padding:0.15rem 0.45rem; border-radius:999px; }
+.meta { margin-top:.35rem; color:#cbd5e1; font-size:.92rem; display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+.label { color:#94a3b8; }
+.dot { opacity:.6; }
+.actions { display:flex; align-items:center; gap:.5rem; flex-shrink:0; }
 
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
+.edit-panel { margin-top:.75rem; display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:.75rem; }
+.field { display:grid; gap:.35rem; }
+.field-label { font-size:.8rem; color:#94a3b8; }
+.input { padding:.55rem .65rem; border-radius:10px; border:1px solid rgba(229,231,235,.18); background:rgba(17,24,39,.35); color:#e5e7eb; outline:none; }
+.input:focus { border-color:rgba(65,184,131,.65); box-shadow:0 0 0 3px rgba(65,184,131,.18); }
 
-.title {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #e5e7eb;
-}
+.btn { border:1px solid transparent; border-radius:999px; padding:.55rem .9rem; cursor:pointer; font-weight:600; transition:transform .08s ease, background .2s ease, border-color .2s ease, opacity .2s ease; user-select:none; color:#e5e7eb; }
+.btn:active { transform:translateY(1px); }
+.btn:disabled { opacity:.6; cursor:not-allowed; }
+.btn-small { padding:.45rem .75rem; font-size:.92rem; }
+.btn-icon { width:42px; height:42px; padding:0; display:grid; place-items:center; border-radius:999px; }
 
-.subtitle {
-  margin: 0.35rem 0 0;
-  color: #9ca3af;
-  font-size: 0.95rem;
-}
+.btn-secondary { background:rgba(229,231,235,.12); border-color:rgba(229,231,235,.15); }
+.btn-secondary:hover { background:rgba(229,231,235,.18); }
 
-.hint {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: #9ca3af;
-  padding: 0.75rem 0;
-}
+.btn-primary { background:rgba(65,184,131,.9); color:#06130e; }
+.btn-primary:hover { background:rgba(65,184,131,1); }
 
-.alert {
-  border: 1px solid rgba(220, 38, 38, 0.35);
-  background: rgba(220, 38, 38, 0.08);
-  color: #fca5a5;
-  padding: 0.75rem;
-  border-radius: 10px;
-}
+.btn-ghost { background:transparent; border-color:rgba(229,231,235,.15); }
+.btn-ghost:hover { background:rgba(229,231,235,.08); }
 
-/* List */
-.list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 0.75rem;
-}
+.btn-danger { background:rgba(220,38,38,.9); color:#fff; }
+.btn-danger:hover { background:rgba(185,28,28,.95); }
 
-.item {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+.btn-danger-outline { background:transparent; border-color:rgba(220,38,38,.45); color:#fca5a5; }
+.btn-danger-outline:hover { background:rgba(220,38,38,.12); border-color:rgba(220,38,38,.65); }
 
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  border: 1px solid rgba(229, 231, 235, 0.12);
-  background: rgba(17, 24, 39, 0.55);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
+.spinner { width:16px; height:16px; border-radius:999px; border:2px solid rgba(229,231,235,.35); border-top-color:rgba(229,231,235,.95); animation:spin .8s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
 
-.main {
-  min-width: 0;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.name {
-  color: #e5e7eb;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 58ch;
-}
-
-.chip {
-  font-size: 0.8rem;
-  color: #a7f3d0;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-}
-
-.meta {
-  margin-top: 0.35rem;
-  color: #cbd5e1;
-  font-size: 0.92rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.label {
-  color: #94a3b8;
-}
-
-.dot {
-  opacity: 0.6;
-}
-
-/* Actions */
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-/* Edit panel */
-.edit-panel {
-  margin-top: 0.75rem;
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr;
-  gap: 0.75rem;
-}
-
-.field {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.field-label {
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
-
-.input {
-  padding: 0.55rem 0.65rem;
-  border-radius: 10px;
-  border: 1px solid rgba(229, 231, 235, 0.18);
-  background: rgba(17, 24, 39, 0.35);
-  color: #e5e7eb;
-  outline: none;
-}
-
-.input:focus {
-  border-color: rgba(65, 184, 131, 0.65);
-  box-shadow: 0 0 0 3px rgba(65, 184, 131, 0.18);
-}
-
-/* Buttons */
-.btn {
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 0.55rem 0.9rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: transform 0.08s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-  user-select: none;
-  color: #e5e7eb;
-}
-
-.btn:active {
-  transform: translateY(1px);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-small {
-  padding: 0.45rem 0.75rem;
-  font-size: 0.92rem;
-}
-
-.btn-icon {
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-}
-
-/* Variants */
-.btn-secondary {
-  background: rgba(229, 231, 235, 0.12);
-  border-color: rgba(229, 231, 235, 0.15);
-}
-.btn-secondary:hover {
-  background: rgba(229, 231, 235, 0.18);
-}
-
-.btn-primary {
-  background: rgba(65, 184, 131, 0.9);
-  color: #06130e;
-}
-.btn-primary:hover {
-  background: rgba(65, 184, 131, 1);
-}
-
-.btn-ghost {
-  background: transparent;
-  border-color: rgba(229, 231, 235, 0.15);
-}
-.btn-ghost:hover {
-  background: rgba(229, 231, 235, 0.08);
-}
-
-.btn-danger {
-  background: rgba(220, 38, 38, 0.9);
-  color: white;
-}
-.btn-danger:hover {
-  background: rgba(185, 28, 28, 0.95);
-}
-
-.btn-danger-outline {
-  background: transparent;
-  border-color: rgba(220, 38, 38, 0.45);
-  color: #fca5a5;
-}
-.btn-danger-outline:hover {
-  background: rgba(220, 38, 38, 0.12);
-  border-color: rgba(220, 38, 38, 0.65);
-}
-
-/* Spinner */
-.spinner {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  border: 2px solid rgba(229, 231, 235, 0.35);
-  border-top-color: rgba(229, 231, 235, 0.95);
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@media (max-width: 700px) {
-  .edit-panel {
-    grid-template-columns: 1fr;
-  }
-  .item {
-    flex-direction: column;
-  }
-  .actions {
-    justify-content: flex-end;
-    width: 100%;
-  }
+@media (max-width:700px){
+  .edit-panel{ grid-template-columns:1fr; }
+  .item{ flex-direction:column; }
+  .actions{ justify-content:flex-end; width:100%; }
 }
 </style>
