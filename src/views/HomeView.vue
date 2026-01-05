@@ -1,298 +1,168 @@
 <script setup lang="ts">
-/**
- * === HOME-VIEW ===
- * Die Hauptseite der App mit ETF-Sparplan-Rechner
- *
- * WICHTIG: Diese View verwaltet den STATE (Zustand) und gibt ihn an Kinder-Komponenten weiter
- * - ETF-Daten (werden später vom Backend geladen)
- * - Formular-Eingaben (Sparrate, Laufzeit)
- * - Berechnung der Szenarien
- */
-
 import { ref, onMounted } from 'vue'
-import AppNav from '../components/AppNav.vue'
-import AppHeader from '../components/AppHeader.vue'
-import SavingsPlanForm from '../components/SavingsPlanForm.vue'
-import ScenarioCards from '../components/ScenarioCards.vue'
-import MyList from '../components/MyList.vue'
-import { createSparplan, getSparplaene, type SparplanResponse } from '../services/sparplanApi'
+import { getSparplaene, deleteSparplan, updateSparplan, type SparplanResponse, type SparplanRequest } from '../services/sparplanApi'
 
-/**
- * === ETF-DATEN ===
- * Mock-Daten für ETFs (später vom Backend)
- */
-const etfs = ref([
-  { id: 1, name: 'S&P 500', isin: 'IE00B5BMR087', ter: 0.0007 },
-  { id: 2, name: 'MSCI World', isin: 'IE00B4L5Y983', ter: 0.0020 },
-  { id: 3, name: 'FTSE All-World', isin: 'IE00B3RBWM25', ter: 0.0022 },
-])
-const loadingEtfs = ref(false)
-const errorEtfs = ref<string | null>(null)
+// Inline-Edit State
+const editingId = ref<number | null>(null)
+const savingId = ref<number | null>(null)
+const editForm = ref<SparplanRequest>({
+  etfName: '',
+  monatlicheRate: 0,
+  laufzeitJahre: 0,
+})
 
-/**
- * === FORMULAR-DATEN ===
- * Werden vom SavingsPlanForm-Event gefüllt
- */
-const selectedEtf = ref('')
-const monthlyRate = ref(200)
-const years = ref(15)
+const sparplaene = ref<SparplanResponse[]>([])
+const sparplaeneError = ref<string | null>(null)
+const confirmDeleteId = ref<number | null>(null)
+const deletingId = ref<number | null>(null)
 
-/**
- * === BACKEND-STATE ===
- * Für Speichern und Laden von Sparplänen
- */
-const isSaving = ref(false)              // Wird Sparplan gerade gespeichert?
-const isLoadingPlans = ref(false)        // Werden Sparpläne gerade geladen?
-const errorMessage = ref<string | null>(null)     // Fehlermeldung
-const successMessage = ref<string | null>(null)   // Erfolgsmeldung
-const sparplaene = ref<SparplanResponse[]>([])    // Liste aller gespeicherten Sparpläne
+function startEdit(plan: SparplanResponse) {
+  // Wenn gerade eine Delete-Confirmation offen ist, schließen
+  confirmDeleteId.value = null
 
-/**
- * === EVENT-HANDLER ===
- * Wird aufgerufen wenn SavingsPlanForm submitted wird
- */
-async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
-  // State für Szenarien-Berechnung (bestehende Logik)
-  selectedEtf.value = payload.etf
-  monthlyRate.value = payload.rate
-  years.value = payload.years
-
-  console.log('✅ Sparplan berechnet:', payload)
-
-  // === NEU: Backend-Integration ===
-  // Fehlermeldungen zurücksetzen
-  errorMessage.value = null
-  successMessage.value = null
-  isSaving.value = true
-
-  try {
-    // ETF-Name mit TER formatieren (wie im Dropdown angezeigt)
-    const selectedEtfObj = etfs.value.find(e => e.name === payload.etf)
-    const etfNameFormatted = selectedEtfObj
-      ? `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
-      : payload.etf
-
-    // Sparplan im Backend speichern
-    const savedPlan = await createSparplan({
-      etfName: etfNameFormatted,
-      monatlicheRate: payload.rate,
-      laufzeitJahre: payload.years,
-    })
-
-    console.log('💾 Sparplan im Backend gespeichert:', savedPlan)
-
-    // Erfolgsmeldung anzeigen
-    successMessage.value = '✅ Sparplan erfolgreich gespeichert!'
-
-    // Sparpläne-Liste neu laden
-    await loadSparplaene()
-
-    // Erfolgsmeldung nach 3 Sekunden ausblenden
-    setTimeout(() => {
-      successMessage.value = null
-    }, 3000)
-
-  } catch (error) {
-    // Fehlerbehandlung
-    console.error('❌ Fehler beim Speichern:', error)
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : 'Fehler beim Speichern des Sparplans'
-  } finally {
-    isSaving.value = false
+  editingId.value = plan.id
+  editForm.value = {
+    etfName: plan.etfName,
+    monatlicheRate: plan.monatlicheRate,
+    laufzeitJahre: plan.laufzeitJahre,
   }
 }
 
-/**
- * === SPARPLÄNE VOM BACKEND LADEN ===
- */
-async function loadSparplaene() {
-  isLoadingPlans.value = true
-  errorMessage.value = null
+function cancelEdit() {
+  editingId.value = null
+}
+
+async function saveEdit(id: number) {
+  sparplaeneError.value = null
+  savingId.value = id
 
   try {
-    const plans = await getSparplaene()
-    sparplaene.value = plans
-    console.log('📋 Sparpläne geladen:', plans.length, 'Einträge')
-  } catch (error) {
-    console.error('❌ Fehler beim Laden der Sparpläne:', error)
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : 'Fehler beim Laden der Sparpläne'
+    const updated = await updateSparplan(id, editForm.value)
+    sparplaene.value = sparplaene.value.map(p => (p.id === id ? updated : p))
+    editingId.value = null
+  } catch (e: unknown) {
+    sparplaeneError.value =
+      e instanceof Error ? (e.message || 'Fehler beim Bearbeiten des Sparplans') : 'Fehler beim Bearbeiten des Sparplans'
   } finally {
-    isLoadingPlans.value = false
+    savingId.value = null
   }
 }
 
-/**
- * === DATUM FORMATIEREN ===
- * Konvertiert ISO-String in deutsches Format
- * z.B. "2025-12-06" → "06.12.2025"
- */
-function formatDate(isoString: string): string {
-  const date = new Date(isoString)
-  return date.toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
+function requestDelete(id: number) {
+  // Wenn gerade ein Edit offen ist, schließen
+  editingId.value = null
+  confirmDeleteId.value = id
 }
 
-/**
- * === LIFECYCLE ===
- * Beim Mounten: Sparpläne vom Backend laden
- */
+function cancelDelete() {
+  confirmDeleteId.value = null
+}
+
+async function confirmDelete(id: number) {
+  sparplaeneError.value = null
+  deletingId.value = id
+
+  try {
+    await deleteSparplan(id)
+    sparplaene.value = sparplaene.value.filter(p => p.id !== id)
+    confirmDeleteId.value = null
+  } catch (e: unknown) {
+    sparplaeneError.value =
+      e instanceof Error ? (e.message || 'Fehler beim Löschen des Sparplans') : 'Fehler beim Löschen des Sparplans'
+  } finally {
+    deletingId.value = null
+  }
+}
+
 onMounted(async () => {
-  console.log('🚀 HomeView geladen - ETFs bereit')
-  await loadSparplaene()
+  try {
+    sparplaene.value = await getSparplaene()
+  } catch (e: unknown) {
+    sparplaeneError.value =
+      e instanceof Error ? (e.message || 'Fehler beim Laden der Sparpläne') : 'Fehler beim Laden der Sparpläne'
+  }
 })
 </script>
 
 <template>
-  <!--
-    === HOME-PAGE LAYOUT ===
-    Container mit maximaler Breite und zentriert
-  -->
-  <div class="home">
+  <section class="saved-plans">
+    <h2>Gespeicherte Sparpläne</h2>
 
-    <!--
-      === NAVIGATION ===
-      Links zu anderen Seiten (Home, About, Login, Register)
-    -->
-    <AppNav />
+    <p v-if="sparplaeneError" class="error">{{ sparplaeneError }}</p>
 
-    <!--
-      === APP-HEADER ===
-      Komponente mit Props (wie Methoden-Parameter in Java)
-    -->
-    <AppHeader
-      title="ETF-Sparplaner"
-      subtitle="Simuliere, wie sich dein monatlicher ETF-Sparplan über die Zeit entwickeln könnte."
-    />
+    <ul v-if="sparplaene.length" class="plans-grid">
+      <li v-for="p in sparplaene" :key="p.id" class="plan-card" role="listitem" :aria-label="`Sparplan ${p.etfName}`">
+        <div class="plan-header">
+          <h3>{{ p.etfName }}</h3>
+          <span class="plan-id">ID: {{ p.id }}</span>
+        </div>
 
-    <!--
-      === HAUPT-BEREICH ===
-      Grid-Layout: 2 Spalten (Formular links, Szenarien rechts)
-    -->
-    <main class="main">
-      <!--
-        === FEEDBACK-MESSAGES ===
-        Erfolgs- und Fehlermeldungen über dem Formular
-      -->
-      <div v-if="successMessage || errorMessage" class="messages">
-        <div v-if="successMessage" class="message success">{{ successMessage }}</div>
-        <div v-if="errorMessage" class="message error">{{ errorMessage }}</div>
-      </div>
+        <div class="plan-details">
+          <div class="detail-item">
+            <span class="label">Monatliche Rate</span>
+            <span class="value">{{ p.monatlicheRate }} €</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Laufzeit</span>
+            <span class="value">{{ p.laufzeitJahre }} Jahre</span>
+          </div>
+        </div>
 
-      <!--
-        === LINKE SPALTE: FORMULAR ===
-        Props: ETF-Daten + Speicherzustand übergeben
-        Event: @submit-plan hört auf das submit-Event
-      -->
-      <SavingsPlanForm
-        :etfs="etfs"
-        :loadingEtfs="loadingEtfs"
-        :errorEtfs="errorEtfs"
-        :isSaving="isSaving"
-        @submit-plan="handleSubmitPlan"
-      />
+        <div v-if="editingId === p.id" class="edit-panel">
+          <label class="edit-field">
+            <span class="edit-label">ETF</span>
+            <input class="edit-input" v-model="editForm.etfName" type="text" />
+          </label>
 
-      <!--
-        === RECHTE SPALTE: SZENARIEN ===
-        Props: Formular-Daten übergeben
-      -->
-      <ScenarioCards
-        :rate="monthlyRate"
-        :years="years"
-        :etfName="selectedEtf || 'Wähle einen ETF'"
-      />
-    </main>
+          <label class="edit-field">
+            <span class="edit-label">Monatliche Rate (€)</span>
+            <input class="edit-input" v-model.number="editForm.monatlicheRate" type="number" min="25" max="10000" step="1" />
+          </label>
 
-    <!--
-      === GESPEICHERTE SPARPLÄNE ===
-      Liste aller im Backend gespeicherten Sparpläne
-    -->
+          <label class="edit-field">
+            <span class="edit-label">Laufzeit (Jahre)</span>
+            <input class="edit-input" v-model.number="editForm.laufzeitJahre" type="number" min="1" max="60" step="1" />
+          </label>
+        </div>
 
-   <section class="saved-plans">
-     <MyList />
-   </section>
+        <div class="actions">
+          <template v-if="editingId === p.id">
+            <button class="secondary small" type="button" @click="cancelEdit" :disabled="savingId === p.id">
+              Abbrechen
+            </button>
 
-    <!--
-      === ROADMAP-SEKTION ===
-      Feature-Liste und Projekt-Info
-    -->
+            <button class="danger small" type="button" @click="saveEdit(p.id)" :disabled="savingId === p.id">
+              <span v-if="savingId === p.id" class="spinner" aria-hidden="true"></span>
+              <span v-else>Speichern</span>
+            </button>
+          </template>
 
-  </div>
+          <template v-else-if="confirmDeleteId === p.id">
+            <button class="secondary small" type="button" @click="cancelDelete" :disabled="deletingId === p.id">
+              Abbrechen
+            </button>
+
+            <button class="danger small" type="button" @click="confirmDelete(p.id)" :disabled="deletingId === p.id">
+              <span v-if="deletingId === p.id" class="spinner" aria-hidden="true"></span>
+              <span v-else>Wirklich löschen</span>
+            </button>
+          </template>
+
+          <template v-else>
+            <button class="icon" type="button" @click="startEdit(p)" aria-label="Sparplan bearbeiten" title="Bearbeiten">✏️</button>
+            <button class="icon danger-outline" type="button" @click="requestDelete(p.id)" aria-label="Sparplan löschen" title="Löschen">🗑️</button>
+          </template>
+        </div>
+      </li>
+    </ul>
+
+    <p v-else class="empty-state">
+      Keine gespeicherten Sparpläne gefunden.
+    </p>
+  </section>
 </template>
 
 <style scoped>
-/**
- * === CSS FÜR HOME-VIEW ===
- * Layout-Styles für die Hauptseite
- */
-
-/**
- * === HAUPT-CONTAINER ===
- * Zentriert und begrenzt die maximale Breite
- */
-.home {
-  max-width: 1100px;        /* Maximale Breite: 1100px */
-  margin: 0 auto;           /* Horizontal zentrieren */
-  padding: 2rem 1.5rem 3rem; /* Innenabstand: oben 2rem, Seiten 1.5rem, unten 3rem */
-  min-height: 100vh;
-}
-
-/**
- * === GRID-LAYOUT FÜR FORMULAR + SZENARIEN ===
- * 2 Spalten nebeneinander
- */
-.main {
-  display: grid;                    /* CSS Grid aktivieren */
-  grid-template-columns: 1.2fr 1fr; /* Links breiter als rechts (1.2:1 Verhältnis) */
-  gap: 2rem;                        /* 2rem Abstand zwischen den Spalten */
-  align-items: flex-start;          /* Elemente oben ausrichten */
-}
-
-/**
- * === FEEDBACK-MESSAGES ===
- * Erfolgs- und Fehlermeldungen
- */
-.messages {
-  grid-column: 1 / -1;  /* Über beide Spalten */
-  margin-bottom: 1rem;
-}
-
-.message {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.message.success {
-  background: rgba(65, 184, 131, 0.15);
-  border: 1px solid #41b883;
-  color: #41b883;
-}
-
-.message.error {
-  background: rgba(231, 76, 60, 0.15);
-  border: 1px solid #e74c3c;
-  color: #e74c3c;
-}
-
-/**
- * === ROADMAP-SEKTION ===
- * Abstand nach oben zum Haupt-Bereich
- */
-.roadmap {
-  margin-top: 2.5rem;
-}
-
-/**
- * === GESPEICHERTE SPARPLÄNE ===
- * Liste der Backend-Sparpläne
- */
 .saved-plans {
   margin-top: 3rem;
   margin-bottom: 2rem;
@@ -303,41 +173,12 @@ onMounted(async () => {
   font-size: 1.75rem;
 }
 
-/* Ladezustand */
-.loading {
-  text-align: center;
-  padding: 2rem;
-  color: var(--color-text);
-  opacity: 0.7;
-}
-
-/* Leerzustand (keine Sparpläne) */
-.empty-state {
-  text-align: center;
-  padding: 3rem 2rem;
-  background: var(--color-background-soft);
-  border-radius: 0.75rem;
-  border: 1px dashed var(--color-border);
-}
-
-.empty-state p {
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-}
-
-.empty-state .hint {
-  font-size: 0.95rem;
-  opacity: 0.7;
-}
-
-/* Grid für Sparpläne-Karten */
 .plans-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
 }
 
-/* Einzelne Sparplan-Karte */
 .plan-card {
   background: var(--color-background-soft);
   border: 1px solid var(--color-border);
@@ -352,7 +193,6 @@ onMounted(async () => {
   border-color: #41b883;
 }
 
-/* Karten-Header (ETF-Name + ID) */
 .plan-header {
   display: flex;
   justify-content: space-between;
@@ -378,7 +218,6 @@ onMounted(async () => {
   margin-left: 0.5rem;
 }
 
-/* Details-Liste */
 .plan-details {
   display: flex;
   flex-direction: column;
@@ -402,13 +241,132 @@ onMounted(async () => {
   color: var(--color-heading);
 }
 
-/**
- * === RESPONSIVE DESIGN ===
- * Auf kleinen Bildschirmen (≤800px) nur 1 Spalte
- */
-@media (max-width: 800px) {
-  .main {
-    grid-template-columns: 1fr;  /* Nur 1 Spalte = Elemente stapeln sich */
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+button.icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem 0.5rem;
+  color: var(--color-text);
+  border-radius: 0.35rem;
+  transition: background-color 0.2s ease;
+}
+
+button.icon:hover {
+  background-color: rgba(65, 184, 131, 0.15);
+  color: #41b883;
+}
+
+button.icon.danger-outline {
+  color: #e74c3c;
+}
+
+button.icon.danger-outline:hover {
+  background-color: rgba(231, 76, 60, 0.15);
+}
+
+button.secondary {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  transition: background-color 0.2s ease;
+}
+
+button.secondary:hover:not(:disabled) {
+  background-color: rgba(65, 184, 131, 0.15);
+  border-color: #41b883;
+  color: #41b883;
+}
+
+button.danger {
+  background-color: #e74c3c;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: white;
+  transition: background-color 0.2s ease;
+}
+
+button.danger:hover:not(:disabled) {
+  background-color: #c0392b;
+}
+
+button.small {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner {
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  width: 1em;
+  height: 1em;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Edit panel styles */
+.edit-panel {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.edit-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.edit-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.edit-input {
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(229, 231, 235, 0.18);
+  background: rgba(17, 24, 39, 0.35);
+  color: #e5e7eb;
+  outline: none;
+}
+
+.edit-input:focus {
+  border-color: rgba(65, 184, 131, 0.65);
+  box-shadow: 0 0 0 3px rgba(65, 184, 131, 0.18);
+}
+
+@media (max-width: 700px) {
+  .edit-panel {
+    grid-template-columns: 1fr;
   }
 }
 </style>
