@@ -63,12 +63,21 @@ const ETF_INFO = [
   },
 ] as const
 
+function normalizeEtfName(name: string): string {
+  // Falls das Dropdown/Payload z.B. "S&P 500 (TER: 0.07 %)" liefert,
+  // schneiden wir den Zusatz ab, damit es mit ETF_INFO.name matcht.
+  return name.split(' (TER')[0].trim()
+}
+
+// --- Vergleichs-Infos zum ausgewählten ETF ---
+const selectedEtfInfo = computed(() => {
+  const key = normalizeEtfName(selectedEtf.value)
+  return ETF_INFO.find(e => e.name === key)
+})
+
 const selectedEtf = ref('')
 const monthlyRate = ref(200)
 const years = ref(15)
-
-// --- Vergleichs-Infos zum ausgewählten ETF ---
-const selectedEtfInfo = computed(() => ETF_INFO.find(e => e.name === selectedEtf.value))
 
 function rankTextByVol(id: number) {
   const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y) // klein = stabiler
@@ -95,7 +104,8 @@ const successMessage = ref<string | null>(null)
 const reloadKey = ref(0)
 
 async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
-  selectedEtf.value = payload.etf
+  const chosenName = normalizeEtfName(payload.etf)
+  selectedEtf.value = chosenName
   monthlyRate.value = payload.rate
   years.value = payload.years
 
@@ -104,7 +114,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   isSaving.value = true
 
   try {
-    const selectedEtfObj = etfs.value.find(e => e.name === payload.etf)
+    const selectedEtfObj = etfs.value.find(e => e.name === chosenName)
     const etfNameFormatted = selectedEtfObj
       ? `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
       : payload.etf
