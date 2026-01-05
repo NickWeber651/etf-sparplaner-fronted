@@ -16,7 +16,7 @@ const loadingEtfs = ref(false)
 const errorEtfs = ref<string | null>(null)
 
 // === Auswahl / Szenario State ===
-const selectedEtf = ref('')
+const selectedEtf = ref('') // <- hier steht nur der "Name", ohne "(TER: ...)"
 const monthlyRate = ref(200)
 const years = ref(15)
 
@@ -69,15 +69,14 @@ const ETF_INFO = [
 type EtfInfo = (typeof ETF_INFO)[number]
 
 function normalizeEtfName(name: string): string {
-  // Falls mal "XYZ (TER: ...)" rein kommt
+  // Falls mal "XYZ (TER: ...)" rein kommt -> nur den Namen behalten
   return name.split(' (TER')[0].trim()
 }
 
 // === Vergleichs-Infos zum ausgewählten ETF ===
 const selectedEtfInfo = computed<EtfInfo | null>(() => {
   const key = normalizeEtfName(selectedEtf.value)
-  const found = ETF_INFO.find(e => e.name === key)
-  return found ?? null
+  return ETF_INFO.find(e => e.name === key) ?? null
 })
 
 function rankTextByVol(id: number) {
@@ -178,14 +177,14 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         <p><strong>Diversifikation:</strong> {{ selectedEtfInfo.diversification }}</p>
 
         <div class="metrics">
-          <div><strong>Volatilität (1J):</strong> {{ selectedEtfInfo?.volatility1y.toFixed(1) }}%</div>
-          <div><strong>Max. Drawdown (1J):</strong> {{ selectedEtfInfo?.maxDrawdown1y.toFixed(1) }}%</div>
-          <div><strong>Einordnung:</strong> {{ selectedEtfInfo ? rankTextByVol(selectedEtfInfo.id) : '' }}</div>
-          <div><strong>Stabilität:</strong> {{ selectedEtfInfo ? rankTextByDrawdown(selectedEtfInfo.id) : '' }}</div>
+          <div><strong>Volatilität (1J):</strong> {{ selectedEtfInfo!.volatility1y.toFixed(1) }}%</div>
+          <div><strong>Max. Drawdown (1J):</strong> {{ selectedEtfInfo!.maxDrawdown1y.toFixed(1) }}%</div>
+          <div><strong>Einordnung:</strong> {{ rankTextByVol(selectedEtfInfo!.id) }}</div>
+          <div><strong>Stabilität:</strong> {{ rankTextByDrawdown(selectedEtfInfo!.id) }}</div>
         </div>
 
         <ul>
-          <li v-for="n in selectedEtfInfo.notes" :key="n">{{ n }}</li>
+          <li v-for="n in selectedEtfInfo!.notes" :key="n">{{ n }}</li>
         </ul>
       </div>
     </main>
