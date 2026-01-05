@@ -1,41 +1,39 @@
 <script setup lang="ts">
-/**
- * === IMPORTS ===
- * ref       → macht eine Variable reaktiv (Vue bemerkt Änderungen)
- * onMounted → Funktion, die einmal ausgeführt wird, wenn die Komponente "auf die Seite kommt"
- */
 import { ref, onMounted } from 'vue'
 import { getSparplaene, deleteSparplan, type SparplanResponse } from '../services/sparplanApi'
 
-/**
- * === DATEN FÜR M2 (v-for über features) ==========================
- * Array von Strings, das wir später im Template mit v-for durchlaufen.
- * Das ist deine Unterkomponente mit Schleife → erfüllt M2.
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const features: string[] = [
-  'Du wählst einen ETF, z. B. den S&P 500.',
-  'Du gibst an, wie viel du jeden Monat investieren möchtest.',
-  'Du legst fest, wie lange du sparen willst (in Jahren/Monaten).',
-  'Wir berechnen ein Best-Case-, ein Basis- und ein Worst-Case-Szenario.',
-  'Du siehst Entwicklung der Einzahlung, Rendite und Gesamtsumme im Zeitverlauf.'
-]
-
-/**
- * === ZUSTAND FÜR M3 (REST / API-Anbindung) =======================
- * Das sind reaktive Variablen für den API-Aufruf.
- */
-const loading = ref(false)               // true, solange der Request noch läuft
-const error   = ref<string | null>(null) // Fehlermeldung (oder null)
-const etfs    = ref<unknown[]>([])       // Antwortdaten vom Backend
-
-/**
- * === ZUSTAND FÜR SPARPLÄNE (CRUD / Use Case: Löschen) ===========
- * Lädt die gespeicherten Sparpläne des eingeloggten Users und erlaubt das Löschen.
- */
+// --- Sparpläne State ---
 const sparplaeneLoading = ref(false)
 const sparplaeneError = ref<string | null>(null)
 const sparplaene = ref<SparplanResponse[]>([])
+
+// Inline-Confirm State
+const confirmDeleteId = ref<number | null>(null)
+const deletingId = ref<number | null>(null)
+
+function requestDelete(id: number) {
+  confirmDeleteId.value = id
+}
+
+function cancelDelete() {
+  confirmDeleteId.value = null
+}
+
+async function confirmDelete(id: number) {
+  sparplaeneError.value = null
+  deletingId.value = id
+
+  try {
+    await deleteSparplan(id)
+    sparplaene.value = sparplaene.value.filter(p => p.id !== id)
+    confirmDeleteId.value = null
+  } catch (e: unknown) {
+    sparplaeneError.value =
+      e instanceof Error ? (e.message || 'Fehler beim Löschen des Sparplans') : 'Fehler beim Löschen des Sparplans'
+  } finally {
+    deletingId.value = null
+  }
+}
 
 async function loadSparplaene() {
   sparplaeneLoading.value = true
@@ -44,213 +42,151 @@ async function loadSparplaene() {
   try {
     sparplaene.value = await getSparplaene()
   } catch (e: unknown) {
-    sparplaeneError.value = e instanceof Error ? (e.message || 'Fehler beim Laden der Sparpläne') : 'Fehler beim Laden der Sparpläne'
+    sparplaeneError.value =
+      e instanceof Error ? (e.message || 'Fehler beim Laden der Sparpläne') : 'Fehler beim Laden der Sparpläne'
   } finally {
     sparplaeneLoading.value = false
   }
 }
 
-async function onDeleteSparplan(id: number) {
-  if (!confirm('Sparplan wirklich löschen?')) return
-
-  try {
-    await deleteSparplan(id)
-    // UI sofort aktualisieren
-    sparplaene.value = sparplaene.value.filter(p => p.id !== id)
-  } catch (e: unknown) {
-    sparplaeneError.value = e instanceof Error ? (e.message || 'Fehler beim Löschen des Sparplans') : 'Fehler beim Löschen des Sparplans'
-  }
-}
-
-/**
- * === BASIS-URL DES BACKENDS =====================================
- * Lokal:  http://localhost:8080
- * Online: Wert aus VITE_BACKEND_BASE_URL (Render-Env-Variable)
- */
-const BASE_URL =
-  import.meta.env.VITE_BACKEND_BASE_URL || 'http://localhost:8080'
-
-/**
- * === LEBENSZYKLUS: onMounted =====================================
- * Wird ausgeführt, wenn die Komponente das erste Mal angezeigt wird.
- * Hier testen wir: Kann das Frontend /etfs vom Backend aufrufen?
- */
-onMounted(async () => {
-  // 1. Status setzen: Request startet
-  loading.value = true
-  error.value = null
-
-  try {
-    // 2. HTTP-GET-Request an /etfs schicken
-    const res = await fetch(`${BASE_URL}/etfs`)
-
-    // 3. Falls Statuscode nicht 200–299 → Fehler werfen
-    if (!res.ok) {
-      throw new Error(`HTTP-Fehler: ${res.status}`)
-    }
-
-    // 4. Antwort als JSON einlesen
-    const data = (await res.json()) as unknown[]
-
-    // 5. Daten in der reaktiven Variable speichern → Template zeigt sie an
-    etfs.value = data
-  } catch (e: unknown) {
-    // Fehler-Text merken, damit er im Template angezeigt werden kann
-    if (e instanceof Error) {
-      error.value = e.message || 'Unbekannter Fehler beim API-Aufruf'
-    } else {
-      error.value = 'Unbekannter Fehler beim API-Aufruf'
-    }
-  } finally {
-    // 6. In jedem Fall (Erfolg oder Fehler): loading wieder auf false
-    loading.value = false
-  }
-})
-
-// Spart separaten Use Case-Block (Sparpläne laden/löschen) vom /etfs Demo-Block
 onMounted(async () => {
   await loadSparplaene()
 })
 </script>
 
 <template>
-  <section>
-    <h2>ETF-Sparplaner (Prototyp)</h2>
+  <section class="page">
+    <header class="header">
+      <div>
+        <h2 class="title">Gespeicherte Sparpläne</h2>
+        <p class="subtitle">Hier kannst du deine gespeicherten Sparpläne verwalten (inkl. Löschen).</p>
+      </div>
 
-    <p>
-      Mit diesem Tool kannst du simulieren, wie sich ein ETF-Sparplan über die Zeit entwickeln könnte.
-      Du wählst einen ETF (z.&nbsp;B. den <strong>S&amp;P&nbsp;500</strong>), legst deine monatliche Sparrate
-      und die Laufzeit fest. Auf dieser Basis entstehen verschiedene Szenarien:
-    </p>
+      <button class="btn btn-secondary" type="button" @click="loadSparplaene" :disabled="sparplaeneLoading">
+        Aktualisieren
+      </button>
+    </header>
 
-    <!-- Statische Erklärung der Szenarien -->
-    <ul>
-      <li><strong>Best-Case:</strong> optimistische, aber realistische Renditeannahme.</li>
-      <li><strong>Basis-Szenario:</strong> wahrscheinlicher Durchschnittsverlauf.</li>
-      <li><strong>Worst-Case:</strong> vorsichtige Annahme mit schwächerer Marktentwicklung.</li>
-    </ul>
-
-    <p style="margin-top: 1rem;">
-      In einer späteren Version berechnen wir aus deiner Sparrate und den angenommenen Renditen
-      die Entwicklung der Gesamtsumme (Zinseszins-Effekt) für jeden Monat.
-    </p>
-
-    <h3>Was du mit diesem Tool machen können wirst</h3>
-
-    <!-- v-for (M2) -->
-    <ul>
-      <li v-for="f in features" :key="f">
-        {{ f }}
-      </li>
-    </ul>
-
-
-    <hr style="margin: 2rem 0;" />
-
-    <!-- Bereich für M3: REST / API-Anbindung -->
-    <h3>M3: Test der REST-API (/etfs)</h3>
-
-    <!-- Fall 1: Request läuft noch -->
-    <p v-if="loading">
-      Verbinde mit dem Backend ({{ BASE_URL }}/etfs) ...
-    </p>
-
-    <!-- Fall 2: Es ist ein Fehler aufgetreten -->
-    <p v-else-if="error">
-      Fehler beim API-Aufruf: {{ error }}
-    </p>
-
-    <!-- Fall 3: Request fertig und kein Fehler -->
-    <div v-else>
-      <p>
-        Backend erfolgreich erreicht ✅ – Antwort von
-        <code>/etfs</code>:
-      </p>
-
-      <!-- Falls die Liste leer ist -->
-      <p v-if="etfs.length === 0">
-        Das Backend hat eine leere Liste zurückgegeben.
-      </p>
-
-      <!-- Falls Daten vorhanden sind: rohes JSON anzeigen -->
-      <pre v-else>
-{{ etfs }}
-      </pre>
-    </div>
-    <hr style="margin: 2rem 0;" />
-
-    <!-- Use Case: Gespeicherte Sparpläne anzeigen & löschen -->
-    <h3>Use Case: Gespeicherte Sparpläne</h3>
-
-    <p v-if="sparplaeneLoading">
+    <div v-if="sparplaeneLoading" class="hint">
+      <span class="spinner" aria-hidden="true"></span>
       Lade gespeicherte Sparpläne ...
-    </p>
+    </div>
 
-    <p v-else-if="sparplaeneError">
-      Fehler: {{ sparplaeneError }}
-    </p>
+    <div v-else-if="sparplaeneError" class="alert">
+      <strong>Fehler:</strong> {{ sparplaeneError }}
+    </div>
 
     <div v-else>
-      <p v-if="sparplaene.length === 0">
+      <p v-if="sparplaene.length === 0" class="hint">
         Noch keine Sparpläne gespeichert.
       </p>
 
       <ul v-else class="sparplan-list">
         <li v-for="p in sparplaene" :key="p.id" class="sparplan-item">
           <div class="sparplan-main">
-            <div class="sparplan-title"><strong>{{ p.etfName }}</strong></div>
+            <div class="sparplan-title">
+              <strong>{{ p.etfName }}</strong>
+              <span class="chip">#{{ p.id }}</span>
+            </div>
+
             <div class="sparplan-meta">
-              Rate: {{ p.monatlicheRate }} € · Laufzeit: {{ p.laufzeitJahre }} Jahre · Erstellt: {{ p.erstelltAm }}
+              <span><span class="label">Rate:</span> {{ p.monatlicheRate }} €</span>
+              <span class="dot">•</span>
+              <span><span class="label">Laufzeit:</span> {{ p.laufzeitJahre }} Jahre</span>
+              <span class="dot">•</span>
+              <span><span class="label">Erstellt:</span> {{ p.erstelltAm }}</span>
             </div>
           </div>
 
-          <button class="danger" type="button" @click="onDeleteSparplan(p.id)">
-            Löschen
-          </button>
+          <div class="actions">
+            <template v-if="confirmDeleteId === p.id">
+              <button
+                class="btn btn-secondary btn-small"
+                type="button"
+                @click="cancelDelete"
+                :disabled="deletingId === p.id"
+              >
+                Abbrechen
+              </button>
+
+              <button
+                class="btn btn-danger btn-small"
+                type="button"
+                @click="confirmDelete(p.id)"
+                :disabled="deletingId === p.id"
+              >
+                <span v-if="deletingId === p.id" class="spinner" aria-hidden="true"></span>
+                <span v-else>Wirklich löschen</span>
+              </button>
+            </template>
+
+            <button
+              v-else
+              class="btn btn-danger-outline btn-icon"
+              type="button"
+              @click="requestDelete(p.id)"
+              aria-label="Sparplan löschen"
+              title="Löschen"
+            >
+              🗑️
+            </button>
+          </div>
         </li>
       </ul>
-
-      <button class="secondary" type="button" @click="loadSparplaene" style="margin-top: 0.75rem;">
-        Aktualisieren
-      </button>
     </div>
   </section>
 </template>
 
 <style scoped>
-h2 {
-  margin-bottom: 0.75rem;
+/* Layout */
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1rem 0.5rem;
 }
 
-h3 {
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
-ul {
-  padding-left: 1.2rem;
+.title {
+  margin: 0;
+  font-size: 1.4rem;
 }
 
-li {
-  margin: 0.25rem 0;
+.subtitle {
+  margin: 0.35rem 0 0;
+  color: #9ca3af;
+  font-size: 0.95rem;
 }
 
-/* Darstellung des JSON-Blocks */
-pre {
-  margin-top: 0.75rem;
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #9ca3af;
+  padding: 0.75rem 0;
+}
+
+.alert {
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.08);
+  color: #fca5a5;
   padding: 0.75rem;
-  border-radius: 4px;
-  background: #1f2933;  /* dunkler Hintergrund */
-  color: #e5e7eb;       /* helle Schrift */
-  font-size: 0.9rem;
-  overflow-x: auto;     /* horizontales Scrollen, falls die Zeile zu lang ist */
+  border-radius: 10px;
 }
-</style>
 
+/* List */
 .sparplan-list {
   list-style: none;
-  padding-left: 0;
+  padding: 0;
   margin: 0;
+  display: grid;
+  gap: 0.75rem;
 }
 
 .sparplan-item {
@@ -258,40 +194,130 @@ pre {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
+
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(229, 231, 235, 0.12);
+  background: rgba(17, 24, 39, 0.55);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.sparplan-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e5e7eb;
+}
+
+.chip {
+  font-size: 0.8rem;
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
 }
 
 .sparplan-meta {
-  color: #4b5563;
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
+  color: #cbd5e1;
+  font-size: 0.92rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-button.danger {
-  background: #dc2626;
-  border: none;
+.label {
+  color: #94a3b8;
+}
+
+.dot {
+  opacity: 0.6;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Buttons */
+.btn {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.08s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-small {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.92rem;
+}
+
+.btn-icon {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+}
+
+/* Variants */
+.btn-secondary {
+  background: rgba(229, 231, 235, 0.12);
+  border-color: rgba(229, 231, 235, 0.15);
+  color: #e5e7eb;
+}
+.btn-secondary:hover {
+  background: rgba(229, 231, 235, 0.18);
+}
+
+.btn-danger {
+  background: rgba(220, 38, 38, 0.9);
   color: white;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  cursor: pointer;
+}
+.btn-danger:hover {
+  background: rgba(185, 28, 28, 0.95);
 }
 
-button.danger:hover {
-  background: #b91c1c;
+.btn-danger-outline {
+  background: transparent;
+  border-color: rgba(220, 38, 38, 0.45);
+  color: #fca5a5;
+}
+.btn-danger-outline:hover {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.65);
 }
 
-button.secondary {
-  background: #e5e7eb;
-  border: none;
-  color: #111827;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  cursor: pointer;
+/* Spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(229, 231, 235, 0.35);
+  border-top-color: rgba(229, 231, 235, 0.95);
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
 }
 
-button.secondary:hover {
-  background: #d1d5db;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
+</style>
