@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import {
   getSparplaene,
   deleteSparplan,
@@ -7,6 +7,8 @@ import {
   type SparplanResponse,
   type SparplanRequest,
 } from '../services/sparplanApi'
+
+const props = defineProps<{ reloadKey?: number }>()
 
 // --- State ---
 const loading = ref(false)
@@ -100,6 +102,12 @@ function formatDate(iso?: string) {
 }
 
 onMounted(() => { void loadSparplaene() })
+
+watch(
+  () => props.reloadKey,
+  () => { void loadSparplaene() },
+  { flush: 'post' }
+)
 </script>
 
 <template>
