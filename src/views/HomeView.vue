@@ -7,9 +7,10 @@ import ScenarioCards from '../components/ScenarioCards.vue'
 import MyList from '../components/MyList.vue'
 import { createSparplan } from '../services/sparplanApi'
 
-// ✅ Nutze deine Datei src/data/etfInfo.ts
-// --- ETF Zusatzinfos (Mock) ---
-// NOTE: Lokal in HomeView, damit der Build auf Render nicht an einem fehlenden/anders benannten File scheitert.
+/**
+ * ETF-Zusatzinfos (Mock)
+ * (Du kannst das später sauber nach `src/data/etfInfo.ts` auslagern und hier importieren.)
+ */
 export type RiskLabel = 'niedrig' | 'mittel' | 'hoch'
 
 export interface EtfInfo {
@@ -80,6 +81,7 @@ const ETF_INFO: EtfInfo[] = [
   },
 ]
 
+// --- ETF Mock-Daten (Dropdown) ---
 const etfs = ref([
   { id: 1, name: 'S&P 500', isin: 'IE00B5BMR087', ter: 0.0007 },
   { id: 2, name: 'MSCI World', isin: 'IE00B4L5Y983', ter: 0.0020 },
@@ -90,23 +92,64 @@ const loadingEtfs = ref(false)
 const errorEtfs = ref<string | null>(null)
 
 // === Auswahl / Szenario State ===
-const selectedEtf = ref('') // Name ohne "(TER: ...)"
+const selectedEtf = ref('') // idealerweise nur Name
+const selectedEtfRaw = ref('') // das, was aus dem Form wirklich ankommt (hilft beim Matching)
 const monthlyRate = ref(200)
 const years = ref(15)
 
-// ✅ TS-sicher: kein split()[0]
 function normalizeEtfName(input: unknown): string {
   const name = typeof input === 'string' ? input : ''
+  // entfernt z.B. " (TER: 0.07 %)" oder ähnliche Zusätze
   const marker = ' (TER'
   const idx = name.indexOf(marker)
   const base = idx === -1 ? name : name.slice(0, idx)
   return base.trim()
 }
 
+function keyify(input: unknown): string {
+  return normalizeEtfName(input)
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractIsin(input: unknown): string | null {
+  const s = typeof input === 'string' ? input : ''
+  // sehr robuste ISIN-Erkennung
+  const m = s.toUpperCase().match(/[A-Z]{2}[A-Z0-9]{10}/)
+  return m ? m[0] : null
+}
+
 // === Vergleichs-Infos zum ausgewählten ETF ===
 const selectedEtfInfo = computed<EtfInfo | null>(() => {
-  const key = normalizeEtfName(selectedEtf.value)
-  return ETF_INFO.find(e => e.name === key) ?? null
+  const raw = selectedEtfRaw.value || selectedEtf.value
+  const key = keyify(raw)
+  const isin = extractIsin(raw)
+
+  // 1) exakter Name
+  const byExactName = ETF_INFO.find(e => keyify(e.name) === key)
+  if (byExactName) return byExactName
+
+  // 2) ISIN (falls im Raw-Text enthalten)
+  if (isin) {
+    const byIsin = ETF_INFO.find(e => e.isin.toUpperCase() === isin)
+    if (byIsin) return byIsin
+  }
+
+  // 3) enthält Name (z.B. wenn Raw "S&P 500 - irgendwas" ist)
+  const rawLower = String(raw).toLowerCase()
+  const byContainsName = ETF_INFO.find(e => rawLower.includes(e.name.toLowerCase()))
+  if (byContainsName) return byContainsName
+
+  // 4) enthält ISIN (falls Raw sie irgendwo drin hat)
+  const byContainsIsin = ETF_INFO.find(e => raw.toUpperCase().includes(e.isin.toUpperCase()))
+  if (byContainsIsin) return byContainsIsin
+
+  return null
+})
+
+const showEtfDebug = computed(() => {
+  return (selectedEtfRaw.value || selectedEtf.value) && !selectedEtfInfo.value
 })
 
 function rankTextByVol(id: number) {
@@ -135,6 +178,7 @@ const successMessage = ref<string | null>(null)
 const reloadKey = ref(0)
 
 async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
+  selectedEtfRaw.value = String(payload.etf ?? '')
   const chosenName = normalizeEtfName(payload.etf)
 
   selectedEtf.value = chosenName
@@ -146,7 +190,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   isSaving.value = true
 
   try {
-    // ✅ TS-sicher: find kann undefined sein → if-Block
+    // TS-sicher: find kann undefined sein → if-Block
     let etfNameFormatted = payload.etf
     const selectedEtfObj = etfs.value.find(e => e.name === chosenName)
     if (selectedEtfObj) {
@@ -193,13 +237,9 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         @submit-plan="handleSubmitPlan"
       />
 
-      <ScenarioCards
-        :rate="monthlyRate"
-        :years="years"
-        :etfName="selectedEtf || 'Wähle einen ETF'"
-      />
+      <ScenarioCards :rate="monthlyRate" :years="years" :etfName="selectedEtf || 'Wähle einen ETF'" />
 
-      <!-- ✅ erscheint sobald handleSubmitPlan gelaufen ist -->
+      <!-- ETF-Kurzprofil (erscheint nach Submit/Berechnen) -->
       <div v-if="selectedEtfInfo" class="etf-info">
         <h3>{{ selectedEtfInfo.name }} – Kurzprofil</h3>
 
@@ -208,15 +248,29 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         <p><strong>Diversifikation:</strong> {{ selectedEtfInfo.diversification }}</p>
 
         <div class="metrics">
-          <div><strong>Volatilität (1J):</strong> {{ (selectedEtfInfo?.volatility1y ?? 0).toFixed(1) }}%</div>
-          <div><strong>Max. Drawdown (1J):</strong> {{ (selectedEtfInfo?.maxDrawdown1y ?? 0).toFixed(1) }}%</div>
-          <div><strong>Einordnung:</strong> {{ selectedEtfInfo ? rankTextByVol(selectedEtfInfo.id) : '' }}</div>
-          <div><strong>Stabilität:</strong> {{ selectedEtfInfo ? rankTextByDrawdown(selectedEtfInfo.id) : '' }}</div>
+          <div><strong>Volatilität (1J):</strong> {{ selectedEtfInfo.volatility1y.toFixed(1) }}%</div>
+          <div><strong>Max. Drawdown (1J):</strong> {{ selectedEtfInfo.maxDrawdown1y.toFixed(1) }}%</div>
+          <div><strong>Einordnung:</strong> {{ rankTextByVol(selectedEtfInfo.id) }}</div>
+          <div><strong>Stabilität:</strong> {{ rankTextByDrawdown(selectedEtfInfo.id) }}</div>
         </div>
 
         <ul>
-          <li v-for="n in (selectedEtfInfo?.notes ?? [])" :key="n">{{ n }}</li>
+          <li v-for="n in selectedEtfInfo.notes" :key="n">{{ n }}</li>
         </ul>
+      </div>
+
+      <!-- Debug-Box: falls kein Profil gematcht wird -->
+      <div v-else-if="showEtfDebug" class="etf-info etf-info--warn">
+        <h3>ETF-Profil nicht gefunden</h3>
+        <p>
+          <strong>Eingang aus dem Formular:</strong>
+          <code>{{ selectedEtfRaw }}</code>
+        </p>
+        <p>
+          <strong>Normalisiert:</strong>
+          <code>{{ selectedEtf }}</code>
+        </p>
+        <p class="small">(Dann matcht der Text nicht zu ETF_INFO.name / ETF_INFO.isin. Sag mir den Wert oben, dann passe ich das Matching 100% an.)</p>
       </div>
     </main>
 
@@ -269,7 +323,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   margin-top: 2.5rem;
 }
 
-/* ✅ ETF-Profil */
+/* ETF-Profil */
 .etf-info {
   grid-column: 1 / -1;
   margin-top: 1rem;
@@ -279,11 +333,30 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   background: rgba(17, 24, 39, 0.35);
 }
 
+.etf-info--warn {
+  border-color: rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.06);
+}
+
 .metrics {
   margin: 0.75rem 0;
   display: grid;
   gap: 0.35rem;
   color: #cbd5e1;
+}
+
+code {
+  background: rgba(229, 231, 235, 0.08);
+  border: 1px solid rgba(229, 231, 235, 0.12);
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+  color: #e5e7eb;
+}
+
+.small {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
 }
 
 @media (max-width: 800px) {
