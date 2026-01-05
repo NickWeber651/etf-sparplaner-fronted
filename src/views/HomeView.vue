@@ -69,15 +69,17 @@ function normalizeEtfName(name: string): string {
   return name.split(' (TER')[0].trim()
 }
 
-// --- Vergleichs-Infos zum ausgewählten ETF ---
-const selectedEtfInfo = computed(() => {
-  const key = normalizeEtfName(selectedEtf.value)
-  return ETF_INFO.find(e => e.name === key)
-})
-
 const selectedEtf = ref('')
 const monthlyRate = ref(200)
 const years = ref(15)
+
+type EtfInfo = (typeof ETF_INFO)[number]
+
+// --- Vergleichs-Infos zum ausgewählten ETF ---
+const selectedEtfInfo = computed<EtfInfo | null>(() => {
+  const key = normalizeEtfName(selectedEtf.value)
+  return ETF_INFO.find(e => e.name === key) ?? null
+})
 
 function rankTextByVol(id: number) {
   const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y) // klein = stabiler
@@ -180,7 +182,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         </div>
 
         <ul>
-          <li v-for="n in selectedEtfInfo.notes" :key="n">{{ n }}</li>
+          <li v-for="(n, idx) in selectedEtfInfo.notes" :key="idx">{{ n }}</li>
         </ul>
       </div>
     </main>
