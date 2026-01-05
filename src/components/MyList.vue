@@ -1,323 +1,164 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { getSparplaene, deleteSparplan, type SparplanResponse } from '../services/sparplanApi'
+/**
+ * === HOME-VIEW ===
+ * Hauptseite: Navigation + Rechner + Szenarien + gespeicherte Sparpläne
+ *
+ * WICHTIG:
+ * - HomeView ist wieder die "ganze" Seite (AppNav/AppHeader/Form/ScenarioCards)
+ * - Die Sparpläne-Liste inkl. Bearbeiten/Löschen steckt komplett in <MyList />
+ */
 
-// --- Sparpläne State ---
-const sparplaeneLoading = ref(false)
-const sparplaeneError = ref<string | null>(null)
-const sparplaene = ref<SparplanResponse[]>([])
+import { ref } from 'vue'
+import AppNav from '../components/AppNav.vue'
+import AppHeader from '../components/AppHeader.vue'
+import SavingsPlanForm from '../components/SavingsPlanForm.vue'
+import ScenarioCards from '../components/ScenarioCards.vue'
+import MyList from '../components/MyList.vue'
+import { createSparplan } from '../services/sparplanApi'
 
-// Inline-Confirm State
-const confirmDeleteId = ref<number | null>(null)
-const deletingId = ref<number | null>(null)
+// --- ETF Mock-Daten (später Backend) ---
+const etfs = ref([
+  { id: 1, name: 'S&P 500', isin: 'IE00B5BMR087', ter: 0.0007 },
+  { id: 2, name: 'MSCI World', isin: 'IE00B4L5Y983', ter: 0.0020 },
+  { id: 3, name: 'FTSE All-World', isin: 'IE00B3RBWM25', ter: 0.0022 },
+])
+const loadingEtfs = ref(false)
+const errorEtfs = ref<string | null>(null)
 
-function requestDelete(id: number) {
-  confirmDeleteId.value = id
-}
+// --- Szenario State ---
+const selectedEtf = ref('')
+const monthlyRate = ref(200)
+const years = ref(15)
 
-function cancelDelete() {
-  confirmDeleteId.value = null
-}
+// --- UI Messages ---
+const isSaving = ref(false)
+const errorMessage = ref<string | null>(null)
+const successMessage = ref<string | null>(null)
 
-async function confirmDelete(id: number) {
-  sparplaeneError.value = null
-  deletingId.value = id
+// --- Trigger für MyList Reload ---
+const reloadKey = ref(0)
+
+async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
+  selectedEtf.value = payload.etf
+  monthlyRate.value = payload.rate
+  years.value = payload.years
+
+  errorMessage.value = null
+  successMessage.value = null
+  isSaving.value = true
 
   try {
-    await deleteSparplan(id)
-    sparplaene.value = sparplaene.value.filter(p => p.id !== id)
-    confirmDeleteId.value = null
-  } catch (e: unknown) {
-    sparplaeneError.value =
-      e instanceof Error ? (e.message || 'Fehler beim Löschen des Sparplans') : 'Fehler beim Löschen des Sparplans'
+    const selectedEtfObj = etfs.value.find(e => e.name === payload.etf)
+    const etfNameFormatted = selectedEtfObj
+      ? `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
+      : payload.etf
+
+    await createSparplan({
+      etfName: etfNameFormatted,
+      monatlicheRate: payload.rate,
+      laufzeitJahre: payload.years,
+    })
+
+    successMessage.value = '✅ Sparplan erfolgreich gespeichert!'
+
+    // MyList neu laden lassen
+    reloadKey.value += 1
+
+    setTimeout(() => {
+      successMessage.value = null
+    }, 3000)
+  } catch (error) {
+    console.error('❌ Fehler beim Speichern:', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Fehler beim Speichern des Sparplans'
   } finally {
-    deletingId.value = null
+    isSaving.value = false
   }
 }
-
-async function loadSparplaene() {
-  sparplaeneLoading.value = true
-  sparplaeneError.value = null
-
-  try {
-    sparplaene.value = await getSparplaene()
-  } catch (e: unknown) {
-    sparplaeneError.value =
-      e instanceof Error ? (e.message || 'Fehler beim Laden der Sparpläne') : 'Fehler beim Laden der Sparpläne'
-  } finally {
-    sparplaeneLoading.value = false
-  }
-}
-
-onMounted(async () => {
-  await loadSparplaene()
-})
 </script>
 
 <template>
-  <section class="page">
-    <header class="header">
-      <div>
-        <h2 class="title">Gespeicherte Sparpläne</h2>
-        <p class="subtitle">Hier kannst du deine gespeicherten Sparpläne verwalten (inkl. Löschen).</p>
+  <div class="home">
+    <AppNav />
+
+    <AppHeader
+      title="ETF-Sparplaner"
+      subtitle="Simuliere, wie sich dein monatlicher ETF-Sparplan über die Zeit entwickeln könnte."
+    />
+
+    <main class="main">
+      <div v-if="successMessage || errorMessage" class="messages">
+        <div v-if="successMessage" class="message success">{{ successMessage }}</div>
+        <div v-if="errorMessage" class="message error">{{ errorMessage }}</div>
       </div>
 
-      <button class="btn btn-secondary" type="button" @click="loadSparplaene" :disabled="sparplaeneLoading">
-        Aktualisieren
-      </button>
-    </header>
+      <SavingsPlanForm
+        :etfs="etfs"
+        :loadingEtfs="loadingEtfs"
+        :errorEtfs="errorEtfs"
+        :isSaving="isSaving"
+        @submit-plan="handleSubmitPlan"
+      />
 
-    <div v-if="sparplaeneLoading" class="hint">
-      <span class="spinner" aria-hidden="true"></span>
-      Lade gespeicherte Sparpläne ...
-    </div>
+      <ScenarioCards
+        :rate="monthlyRate"
+        :years="years"
+        :etfName="selectedEtf || 'Wähle einen ETF'"
+      />
+    </main>
 
-    <div v-else-if="sparplaeneError" class="alert">
-      <strong>Fehler:</strong> {{ sparplaeneError }}
-    </div>
-
-    <div v-else>
-      <p v-if="sparplaene.length === 0" class="hint">
-        Noch keine Sparpläne gespeichert.
-      </p>
-
-      <ul v-else class="sparplan-list">
-        <li v-for="p in sparplaene" :key="p.id" class="sparplan-item">
-          <div class="sparplan-main">
-            <div class="sparplan-title">
-              <strong>{{ p.etfName }}</strong>
-              <span class="chip">#{{ p.id }}</span>
-            </div>
-
-            <div class="sparplan-meta">
-              <span><span class="label">Rate:</span> {{ p.monatlicheRate }} €</span>
-              <span class="dot">•</span>
-              <span><span class="label">Laufzeit:</span> {{ p.laufzeitJahre }} Jahre</span>
-              <span class="dot">•</span>
-              <span><span class="label">Erstellt:</span> {{ p.erstelltAm }}</span>
-            </div>
-          </div>
-
-          <div class="actions">
-            <template v-if="confirmDeleteId === p.id">
-              <button
-                class="btn btn-secondary btn-small"
-                type="button"
-                @click="cancelDelete"
-                :disabled="deletingId === p.id"
-              >
-                Abbrechen
-              </button>
-
-              <button
-                class="btn btn-danger btn-small"
-                type="button"
-                @click="confirmDelete(p.id)"
-                :disabled="deletingId === p.id"
-              >
-                <span v-if="deletingId === p.id" class="spinner" aria-hidden="true"></span>
-                <span v-else>Wirklich löschen</span>
-              </button>
-            </template>
-
-            <button
-              v-else
-              class="btn btn-danger-outline btn-icon"
-              type="button"
-              @click="requestDelete(p.id)"
-              aria-label="Sparplan löschen"
-              title="Löschen"
-            >
-              🗑️
-            </button>
-          </div>
-        </li>
-      </ul>
-    </div>
-  </section>
+    <!-- Gespeicherte Sparpläne: genau EINMAL, als Komponente -->
+    <section class="saved-plans">
+      <MyList :reloadKey="reloadKey" />
+    </section>
+  </div>
 </template>
 
 <style scoped>
-/* Layout */
-.page {
-  max-width: 980px;
+.home {
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 1rem 0.5rem;
+  padding: 2rem 1.5rem 3rem;
+  min-height: 100vh;
 }
 
-.header {
-  display: flex;
+.main {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 2rem;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+}
+
+.messages {
+  grid-column: 1 / -1;
   margin-bottom: 1rem;
 }
 
-.title {
-  margin: 0;
-  font-size: 1.4rem;
+.message {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
 }
 
-.subtitle {
-  margin: 0.35rem 0 0;
-  color: #9ca3af;
-  font-size: 0.95rem;
+.message.success {
+  background: rgba(65, 184, 131, 0.15);
+  border: 1px solid #41b883;
+  color: #41b883;
 }
 
-.hint {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: #9ca3af;
-  padding: 0.75rem 0;
+.message.error {
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
 }
 
-.alert {
-  border: 1px solid rgba(220, 38, 38, 0.35);
-  background: rgba(220, 38, 38, 0.08);
-  color: #fca5a5;
-  padding: 0.75rem;
-  border-radius: 10px;
+.saved-plans {
+  margin-top: 2.5rem;
 }
 
-/* List */
-.sparplan-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-
-.sparplan-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  border: 1px solid rgba(229, 231, 235, 0.12);
-  background: rgba(17, 24, 39, 0.55);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-
-.sparplan-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #e5e7eb;
-}
-
-.chip {
-  font-size: 0.8rem;
-  color: #a7f3d0;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-}
-
-.sparplan-meta {
-  margin-top: 0.35rem;
-  color: #cbd5e1;
-  font-size: 0.92rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.label {
-  color: #94a3b8;
-}
-
-.dot {
-  opacity: 0.6;
-}
-
-/* Actions */
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-/* Buttons */
-.btn {
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 0.55rem 0.9rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: transform 0.08s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-  user-select: none;
-}
-
-.btn:active {
-  transform: translateY(1px);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-small {
-  padding: 0.45rem 0.75rem;
-  font-size: 0.92rem;
-}
-
-.btn-icon {
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-}
-
-/* Variants */
-.btn-secondary {
-  background: rgba(229, 231, 235, 0.12);
-  border-color: rgba(229, 231, 235, 0.15);
-  color: #e5e7eb;
-}
-.btn-secondary:hover {
-  background: rgba(229, 231, 235, 0.18);
-}
-
-.btn-danger {
-  background: rgba(220, 38, 38, 0.9);
-  color: white;
-}
-.btn-danger:hover {
-  background: rgba(185, 28, 28, 0.95);
-}
-
-.btn-danger-outline {
-  background: transparent;
-  border-color: rgba(220, 38, 38, 0.45);
-  color: #fca5a5;
-}
-.btn-danger-outline:hover {
-  background: rgba(220, 38, 38, 0.12);
-  border-color: rgba(220, 38, 38, 0.65);
-}
-
-/* Spinner */
-.spinner {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  border: 2px solid rgba(229, 231, 235, 0.35);
-  border-top-color: rgba(229, 231, 235, 0.95);
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+@media (max-width: 800px) {
+  .main {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
