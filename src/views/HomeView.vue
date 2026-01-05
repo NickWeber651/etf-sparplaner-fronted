@@ -15,9 +15,12 @@ const etfs = ref([
 const loadingEtfs = ref(false)
 const errorEtfs = ref<string | null>(null)
 
-// --- ETF Zusatzinfos (Mock / Platzhalter) ---
-// Hinweis: Das ist bewusst im Frontend als Mock abgelegt.
-// Wenn ihr später echte Kennzahlen wollt (Volatilität/Drawdown), kann das ins Backend wandern.
+// === Auswahl / Szenario State ===
+const selectedEtf = ref('')
+const monthlyRate = ref(200)
+const years = ref(15)
+
+// === ETF Zusatzinfos (Mock) ===
 const ETF_INFO = [
   {
     id: 1,
@@ -63,22 +66,18 @@ const ETF_INFO = [
   },
 ] as const
 
+type EtfInfo = (typeof ETF_INFO)[number]
+
 function normalizeEtfName(name: string): string {
-  // Falls das Dropdown/Payload z.B. "S&P 500 (TER: 0.07 %)" liefert,
-  // schneiden wir den Zusatz ab, damit es mit ETF_INFO.name matcht.
+  // Falls mal "XYZ (TER: ...)" rein kommt
   return name.split(' (TER')[0].trim()
 }
 
-const selectedEtf = ref('')
-const monthlyRate = ref(200)
-const years = ref(15)
-
-type EtfInfo = (typeof ETF_INFO)[number]
-
-// --- Vergleichs-Infos zum ausgewählten ETF ---
+// === Vergleichs-Infos zum ausgewählten ETF ===
 const selectedEtfInfo = computed<EtfInfo | null>(() => {
   const key = normalizeEtfName(selectedEtf.value)
-  return ETF_INFO.find(e => e.name === key) ?? null
+  const found = ETF_INFO.find(e => e.name === key)
+  return found ?? null
 })
 
 function rankTextByVol(id: number) {
@@ -98,6 +97,7 @@ function rankTextByDrawdown(id: number) {
   return 'liegt beim Drawdown im Mittelfeld'
 }
 
+// === UI Messages ===
 const isSaving = ref(false)
 const errorMessage = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
@@ -107,6 +107,7 @@ const reloadKey = ref(0)
 
 async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
   const chosenName = normalizeEtfName(payload.etf)
+
   selectedEtf.value = chosenName
   monthlyRate.value = payload.rate
   years.value = payload.years
@@ -167,6 +168,8 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         :years="years"
         :etfName="selectedEtf || 'Wähle einen ETF'"
       />
+
+      <!-- ETF-Kurzprofil: erscheint sobald selectedEtf gesetzt ist (nach "Berechnen") -->
       <div v-if="selectedEtfInfo" class="etf-info">
         <h3>{{ selectedEtfInfo.name }} – Kurzprofil</h3>
 
@@ -175,14 +178,14 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         <p><strong>Diversifikation:</strong> {{ selectedEtfInfo.diversification }}</p>
 
         <div class="metrics">
-          <div><strong>Volatilität (1J):</strong> {{ selectedEtfInfo.volatility1y.toFixed(1) }}%</div>
-          <div><strong>Max. Drawdown (1J):</strong> {{ selectedEtfInfo.maxDrawdown1y.toFixed(1) }}%</div>
-          <div><strong>Einordnung:</strong> {{ rankTextByVol(selectedEtfInfo.id) }}</div>
-          <div><strong>Stabilität:</strong> {{ rankTextByDrawdown(selectedEtfInfo.id) }}</div>
+          <div><strong>Volatilität (1J):</strong> {{ selectedEtfInfo?.volatility1y.toFixed(1) }}%</div>
+          <div><strong>Max. Drawdown (1J):</strong> {{ selectedEtfInfo?.maxDrawdown1y.toFixed(1) }}%</div>
+          <div><strong>Einordnung:</strong> {{ selectedEtfInfo ? rankTextByVol(selectedEtfInfo.id) : '' }}</div>
+          <div><strong>Stabilität:</strong> {{ selectedEtfInfo ? rankTextByDrawdown(selectedEtfInfo.id) : '' }}</div>
         </div>
 
         <ul>
-          <li v-for="(n, idx) in selectedEtfInfo.notes" :key="idx">{{ n }}</li>
+          <li v-for="n in selectedEtfInfo.notes" :key="n">{{ n }}</li>
         </ul>
       </div>
     </main>
