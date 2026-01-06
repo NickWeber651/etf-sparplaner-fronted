@@ -6,7 +6,7 @@ import SavingsPlanForm from '../components/SavingsPlanForm.vue'
 import ScenarioCards from '../components/ScenarioCards.vue'
 import MyList from '../components/MyList.vue'
 import { createSparplan } from '../services/sparplanApi'
-
+import EtfNews from '../components/EtfNews.vue'
 /**
  * ETF-Zusatzinfos (Mock)
  */
@@ -257,6 +257,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         <ul>
           <li v-for="n in selectedEtfInfo.notes" :key="n">{{ n }}</li>
         </ul>
+        <EtfNews :etfName="selectedEtfInfo.name" />
       </div>
 
       <div v-else-if="showEtfDebug" class="etf-info etf-info--warn">
