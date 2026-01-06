@@ -10,31 +10,62 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const items = ref<NewsItem[]>([])
 
-const query = computed(() => {
-  // simple Mapping: bei Bedarf später verfeinern
-  const n = props.etfName.toLowerCase()
-  if (n.includes('s&p')) return 'S&P 500'
-  if (n.includes('msci')) return 'MSCI'
-  if (n.includes('all-world')) return 'All-World'
-  return props.etfName
+const primaryQuery = computed(() => {
+  const raw = (props.etfName ?? '').trim()
+  const n = raw.toLowerCase()
+
+  // bessere, "news-taugliche" Suchbegriffe
+  if (!raw) return 'ETF'
+
+  if (n.includes('s&p')) return 'S&P 500 ETF'
+  if (n.includes('msci world')) return 'MSCI World ETF'
+  if (n.includes('msci')) return 'MSCI ETF'
+  if (n.includes('ftse all-world') || n.includes('all-world')) return 'FTSE All-World ETF'
+
+  // default: ETF hinten dran macht fast immer besser
+  return `${raw} ETF`
 })
 
+const shownQuery = ref('') // nur Anzeige im UI
+
 watchEffect(async () => {
-  const q = query.value?.trim()
-  if (!q) {
+  const q1 = primaryQuery.value.trim()
+  if (!q1) {
     items.value = []
     return
   }
 
+  // Request "Token", damit alte Requests nicht neuere überschreiben
+  const token = Symbol('req')
+  ;(watchEffect as any)._lastToken = token
+
   loading.value = true
   error.value = null
+  shownQuery.value = q1
+
   try {
-    items.value = await searchNews(q, 5)
+    let result = await searchNews(q1, 5)
+
+    // Fallback: wenn 0 Treffer → allgemeine ETF-News statt "nichts gefunden"
+    if (!result || result.length === 0) {
+      const q2 = 'ETF'
+      shownQuery.value = q2
+      result = await searchNews(q2, 5)
+    }
+
+    // nur setzen, wenn das noch der aktuellste Request ist
+    if ((watchEffect as any)._lastToken === token) {
+      items.value = result ?? []
+    }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Fehler beim Laden der News'
-    items.value = []
+    if ((watchEffect as any)._lastToken === token) {
+      error.value = e instanceof Error ? e.message : 'Fehler beim Laden der News'
+      items.value = []
+    }
   } finally {
-    loading.value = false
+    if ((watchEffect as any)._lastToken === token) {
+      loading.value = false
+    }
   }
 })
 
@@ -48,14 +79,18 @@ function fmtDate(unixSeconds: number) {
 <template>
   <div class="news">
     <div class="news-head">
-      <h4 class="news-title">Aktuelle News zu: <span class="q">{{ query }}</span></h4>
+      <h4 class="news-title">
+        Aktuelle News zu: <span class="q">{{ shownQuery || primaryQuery }}</span>
+      </h4>
     </div>
 
     <div v-if="loading" class="hint">Lade News …</div>
     <div v-else-if="error" class="error">{{ error }}</div>
 
     <ul v-else class="news-list">
-      <li v-if="items.length === 0" class="hint">Keine passenden Headlines gefunden.</li>
+      <li v-if="items.length === 0" class="hint">
+        Keine Headlines gefunden (auch nicht im Fallback).
+      </li>
 
       <li v-for="n in items" :key="n.id" class="news-item">
         <a v-if="n.url" class="link" :href="n.url" target="_blank" rel="noreferrer">

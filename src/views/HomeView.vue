@@ -7,6 +7,7 @@ import ScenarioCards from '../components/ScenarioCards.vue'
 import MyList from '../components/MyList.vue'
 import { createSparplan } from '../services/sparplanApi'
 import EtfNews from '../components/EtfNews.vue'
+
 /**
  * ETF-Zusatzinfos (Mock)
  */
@@ -147,6 +148,22 @@ const showEtfDebug = computed(() => {
   return (selectedEtfRaw.value || selectedEtf.value) && !selectedEtfInfo.value
 })
 
+/**
+ * ✅ News-ETF-Name: immer vorhanden
+ * - wenn ETF gematcht: den offiziellen Namen nehmen
+ * - sonst normalisierten Raw-Wert
+ * - sonst Default, damit EtfNews auch ohne Auswahl etwas zeigt
+ */
+const etfNameForNews = computed(() => {
+  if (selectedEtfInfo.value?.name) return selectedEtfInfo.value.name
+
+  const raw = selectedEtfRaw.value || selectedEtf.value
+  const normalized = normalizeEtfName(raw)
+  if (normalized) return normalized
+
+  return 'MSCI World'
+})
+
 function rankTextByVol(id: number) {
   const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y)
   const pos = sorted.findIndex(x => x.id === id)
@@ -231,6 +248,9 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
 
       <ScenarioCards :rate="monthlyRate" :years="years" :etfName="selectedEtf || 'Wähle einen ETF'" />
 
+      <!-- ✅ NEWS immer sichtbar -->
+      <EtfNews :etfName="etfNameForNews" />
+
       <!-- Debug (hilft sofort zu sehen ob Match klappt) -->
       <p v-if="selectedEtfRaw || selectedEtf" class="etf-debug">
         ETF (raw): <code>{{ selectedEtfRaw }}</code>
@@ -257,7 +277,6 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
         <ul>
           <li v-for="n in selectedEtfInfo.notes" :key="n">{{ n }}</li>
         </ul>
-        <EtfNews :etfName="selectedEtfInfo.name" />
       </div>
 
       <div v-else-if="showEtfDebug" class="etf-info etf-info--warn">
@@ -267,7 +286,6 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
     </main>
 
     <section class="saved-plans">
-      <!-- ✅ OHNE MyList.vue zu ändern -->
       <MyList :key="reloadKey" />
     </section>
   </div>
@@ -309,7 +327,7 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
 .message.error {
   background: rgba(231, 76, 60, 0.15);
   border: 1px solid #e74c3c;
-  color: #e74c3c;
+  color: #e5e7eb;
 }
 
 .saved-plans {
