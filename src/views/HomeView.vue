@@ -6,7 +6,7 @@ import SavingsPlanForm from '../components/SavingsPlanForm.vue'
 import ScenarioCards from '../components/ScenarioCards.vue'
 import MyList from '../components/MyList.vue'
 import { createSparplan } from '../services/sparplanApi'
-import EtfNews from '../components/EtfNews.vue'
+import FxRates from '../components/FxRates.vue'
 
 /**
  * ETF-Zusatzinfos (Mock)
@@ -148,22 +148,6 @@ const showEtfDebug = computed(() => {
   return (selectedEtfRaw.value || selectedEtf.value) && !selectedEtfInfo.value
 })
 
-/**
- * ✅ News-ETF-Name: immer vorhanden
- * - wenn ETF gematcht: den offiziellen Namen nehmen
- * - sonst normalisierten Raw-Wert
- * - sonst Default, damit EtfNews auch ohne Auswahl etwas zeigt
- */
-const etfNameForNews = computed(() => {
-  if (selectedEtfInfo.value?.name) return selectedEtfInfo.value.name
-
-  const raw = selectedEtfRaw.value || selectedEtf.value
-  const normalized = normalizeEtfName(raw)
-  if (normalized) return normalized
-
-  return 'MSCI World'
-})
-
 function rankTextByVol(id: number) {
   const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y)
   const pos = sorted.findIndex(x => x.id === id)
@@ -189,7 +173,6 @@ const successMessage = ref<string | null>(null)
 const reloadKey = ref(0)
 
 async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
-  // UI-State setzen (sofort sichtbar)
   selectedEtfRaw.value = payload.etf
   selectedEtf.value = payload.etf
   monthlyRate.value = payload.rate
@@ -200,7 +183,6 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   isSaving.value = true
 
   try {
-    // Speichern wie gehabt: Name + TER
     const selectedEtfObj = etfs.value.find(e => e.name === payload.etf)
     const etfNameFormatted = selectedEtfObj
       ? `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
@@ -248,10 +230,10 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
 
       <ScenarioCards :rate="monthlyRate" :years="years" :etfName="selectedEtf || 'Wähle einen ETF'" />
 
-      <!-- ✅ NEWS immer sichtbar -->
-      <EtfNews :etfName="etfNameForNews" />
+      <!-- ✅ API immer sichtbar (Frontend-only) -->
+      <FxRates />
 
-      <!-- Debug (hilft sofort zu sehen ob Match klappt) -->
+      <!-- Debug -->
       <p v-if="selectedEtfRaw || selectedEtf" class="etf-debug">
         ETF (raw): <code>{{ selectedEtfRaw }}</code>
         · normalisiert: <code>{{ selectedEtf }}</code>
@@ -327,14 +309,13 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
 .message.error {
   background: rgba(231, 76, 60, 0.15);
   border: 1px solid #e74c3c;
-  color: #e5e7eb;
+  color: #e74c3c;
 }
 
 .saved-plans {
   margin-top: 2.5rem;
 }
 
-/* Debug-Leiste */
 .etf-debug {
   grid-column: 1 / -1;
   margin-top: 0.75rem;
@@ -353,7 +334,6 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   color: #e5e7eb;
 }
 
-/* ✅ ETF-Profil: Textfarbe setzen, sonst wirkt es "weg" */
 .etf-info {
   grid-column: 1 / -1;
   margin-top: 1rem;
