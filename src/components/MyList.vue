@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import {
   getSparplaene,
   deleteSparplan,
@@ -8,11 +8,54 @@ import {
   type SparplanRequest,
 } from '../services/sparplanApi'
 
-import { ETF_INFO, type EtfInfo } from '../data/etfInfo'
-
 const props = defineProps<{
   reloadKey?: number
 }>()
+
+/**
+ * ETF-Zusatzinfos (lokal, damit es IMMER baut)
+ */
+type RiskLabel = 'niedrig' | 'mittel' | 'hoch'
+
+interface EtfInfo {
+  id: number
+  name: string
+  isin: string
+  ter: number
+  volatility1y: number
+  maxDrawdown1y: number
+  riskLabel: RiskLabel
+}
+
+const ETF_INFO: EtfInfo[] = [
+  {
+    id: 1,
+    name: 'S&P 500',
+    isin: 'IE00B5BMR087',
+    ter: 0.0007,
+    volatility1y: 17.0,
+    maxDrawdown1y: -14.0,
+    riskLabel: 'mittel',
+  },
+  {
+    id: 2,
+    name: 'MSCI World',
+    isin: 'IE00B4L5Y983',
+    ter: 0.002,
+    volatility1y: 15.5,
+    maxDrawdown1y: -12.5,
+    riskLabel: 'mittel',
+  },
+  {
+    id: 3,
+    name: 'FTSE All-World',
+    isin: 'IE00B3RBWM25',
+    ter: 0.0022,
+    volatility1y: 16.2,
+    maxDrawdown1y: -13.2,
+    riskLabel: 'mittel',
+  },
+]
 
 // --- State ---
 const loading = ref(false)
@@ -38,6 +81,13 @@ const expandedId = ref<number | null>(null)
 // Haltejahre nur im Frontend (persistiert in localStorage)
 const holdYearsByPlanId = ref<Record<number, number>>({})
 const HOLD_STORAGE_KEY = 'sparplan_hold_years_v1'
+
+// -----------------------------
+// Utils / Storage
+// -----------------------------
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n))
+}
 
 function loadHoldYearsFromStorage() {
   try {
@@ -77,12 +127,20 @@ function setHoldYears(id: number, years: number) {
 }
 
 function toggleDetails(id: number) {
-  // Konflikte vermeiden: nicht gleichzeitig edit/delete + details
   editingId.value = null
   confirmDeleteId.value = null
   expandedId.value = expandedId.value === id ? null : id
 }
 
+function formatDate(iso?: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('de-DE')
+}
+
+// -----------------------------
+// API
+// -----------------------------
 async function loadSparplaene() {
   loading.value = true
   error.value = null
@@ -146,8 +204,7 @@ async function confirmDelete(id: number) {
     sparplaene.value = sparplaene.value.filter(p => p.id !== id)
     confirmDeleteId.value = null
 
-    // optional: hold years cleanup
-    const { [id]: _, ...rest } = holdYearsByPlanId.value
+    const { [id]: _removed, ...rest } = holdYearsByPlanId.value
     holdYearsByPlanId.value = rest
     saveHoldYearsToStorage()
     if (expandedId.value === id) expandedId.value = null
@@ -159,22 +216,11 @@ async function confirmDelete(id: number) {
   }
 }
 
-function formatDate(iso?: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('de-DE')
-}
-
 // -----------------------------
 // Szenario-Logik
 // -----------------------------
 const eur = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
-function clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n))
-}
-
-// DB-Name kommt oft so: "FTSE All-World (TER: 0.22 %)" → auf reinen ETF-Namen kürzen
 function normalizeEtfNameFromDb(label: string): string {
   const marker = ' (TER'
   const idx = label.indexOf(marker)
@@ -186,18 +232,16 @@ function findEtfInfoByPlanName(etfNameFromDb: string): EtfInfo | null {
   return ETF_INFO.find(e => e.name.toLowerCase() === clean) ?? null
 }
 
-function baseReturnByRiskLabel(riskLabel?: EtfInfo['riskLabel']): number {
-  // simple Annahmen (nur Demo; später konfigurierbar)
+function baseReturnByRiskLabel(riskLabel?: RiskLabel): number {
   if (riskLabel === 'niedrig') return 0.04
   if (riskLabel === 'hoch') return 0.08
-  return 0.06 // mittel
+  return 0.06
 }
 
 function monthlyRateFromAnnual(annualReturn: number): number {
   return Math.pow(1 + annualReturn, 1 / 12) - 1
 }
 
-// Einzahlung am Monatsende
 function futureValueMonthly(pmt: number, years: number, annualReturn: number): number {
   const n = Math.round(years * 12)
   if (n <= 0) return 0
@@ -218,7 +262,20 @@ function fmtPct(v: number) {
   return `${(v * 100).toFixed(1)}% p.a.`
 }
 
-function calcScenarios(p: SparplanResponse) {
+type Scenario = {
+  etf: EtfInfo | null
+  paidIn: number
+  holdYears: number
+  worst: number
+  base: number
+  best: number
+  endWorst: number
+  endBase: number
+  endBest: number
+  drawdownHint: number | null
+}
+
+function calcScenarios(p: SparplanResponse): Scenario {
   const etf = findEtfInfoByPlanName(p.etfName)
   const base = baseReturnByRiskLabel(etf?.riskLabel)
   const worst = Math.max(0, base - 0.03)
@@ -229,19 +286,15 @@ function calcScenarios(p: SparplanResponse) {
   const holdYears = getHoldYears(p.id)
   const holdMonths = Math.round(holdYears * 12)
 
-  // 1) Sparphase
   const endWorstAfterSaving = futureValueMonthly(p.monatlicheRate, p.laufzeitJahre, worst)
   const endBaseAfterSaving = futureValueMonthly(p.monatlicheRate, p.laufzeitJahre, base)
   const endBestAfterSaving = futureValueMonthly(p.monatlicheRate, p.laufzeitJahre, best)
 
-  // 2) Haltephase (ohne weitere Einzahlungen)
   const endWorst = growForMonths(endWorstAfterSaving, worst, holdMonths)
   const endBase = growForMonths(endBaseAfterSaving, base, holdMonths)
   const endBest = growForMonths(endBestAfterSaving, best, holdMonths)
 
-  // Optionaler Drawdown-Hinweis (sehr grob!)
-  const drawdownHint =
-    etf?.maxDrawdown1y != null ? endBase * (1 + etf.maxDrawdown1y / 100) : null
+  const drawdownHint = etf?.maxDrawdown1y != null ? endBase * (1 + etf.maxDrawdown1y / 100) : null
 
   return {
     etf,
@@ -257,12 +310,22 @@ function calcScenarios(p: SparplanResponse) {
   }
 }
 
+// (optional) Cache pro Plan-ID, damit wir im Template nicht 100x rechnen
+const scenariosById = computed<Record<number, Scenario>>(() => {
+  const out: Record<number, Scenario> = {}
+  for (const p of sparplaene.value) out[p.id] = calcScenarios(p)
+  return out
+})
+
+function s(id: number) {
+  return scenariosById.value[id]
+}
+
 onMounted(() => {
   loadHoldYearsFromStorage()
   void loadSparplaene()
 })
 
-// ✅ wichtig: neu laden, wenn HomeView reloadKey erhöht
 watch(
   () => props.reloadKey,
   () => {
@@ -322,36 +385,22 @@ watch(
 
               <label class="field">
                 <span class="field-label">Monatliche Rate (€)</span>
-                <input
-                  class="input"
-                  v-model.number="editForm.monatlicheRate"
-                  type="number"
-                  min="25"
-                  max="10000"
-                  step="1"
-                />
+                <input class="input" v-model.number="editForm.monatlicheRate" type="number" min="25" max="10000" step="1" />
               </label>
 
               <label class="field">
                 <span class="field-label">Laufzeit (Jahre)</span>
-                <input
-                  class="input"
-                  v-model.number="editForm.laufzeitJahre"
-                  type="number"
-                  min="1"
-                  max="60"
-                  step="1"
-                />
+                <input class="input" v-model.number="editForm.laufzeitJahre" type="number" min="1" max="60" step="1" />
               </label>
             </div>
 
             <!-- ✅ Szenario-Details -->
             <div v-if="expandedId === p.id" class="scenario-box">
-              <template v-if="calcScenarios(p) as s">
+              <div v-if="s(p.id)">
                 <div class="scenario-head">
                   <strong class="scenario-title">Szenarien</strong>
-                  <span v-if="s.etf" class="scenario-pill">
-                    Risiko: {{ s.etf.riskLabel }}
+                  <span v-if="s(p.id).etf" class="scenario-pill">
+                    Risiko: {{ s(p.id).etf?.riskLabel }}
                   </span>
                 </div>
 
@@ -368,35 +417,33 @@ watch(
                       @input="setHoldYears(p.id, Number(($event.target as HTMLInputElement).value))"
                     />
                   </label>
-                  <span class="hold-hint">
-                    (Frontend-only, gespeichert im Browser)
-                  </span>
+                  <span class="hold-hint">(Frontend-only, gespeichert im Browser)</span>
                 </div>
 
                 <div class="scenario-grid">
-                  <div><span class="label">Einzahlung:</span> {{ eur.format(s.paidIn) }}</div>
+                  <div><span class="label">Einzahlung:</span> {{ eur.format(s(p.id).paidIn) }}</div>
 
-                  <div><span class="label">Worst ({{ fmtPct(s.worst) }}):</span> {{ eur.format(s.endWorst) }}</div>
-                  <div><span class="label">Basis ({{ fmtPct(s.base) }}):</span> {{ eur.format(s.endBase) }}</div>
-                  <div><span class="label">Best ({{ fmtPct(s.best) }}):</span> {{ eur.format(s.endBest) }}</div>
+                  <div><span class="label">Worst ({{ fmtPct(s(p.id).worst) }}):</span> {{ eur.format(s(p.id).endWorst) }}</div>
+                  <div><span class="label">Basis ({{ fmtPct(s(p.id).base) }}):</span> {{ eur.format(s(p.id).endBase) }}</div>
+                  <div><span class="label">Best ({{ fmtPct(s(p.id).best) }}):</span> {{ eur.format(s(p.id).endBest) }}</div>
 
-                  <div v-if="s.etf" class="muted">
-                    <span class="label">Volatilität (1J):</span> {{ s.etf.volatility1y.toFixed(1) }}%
+                  <div v-if="s(p.id).etf" class="muted">
+                    <span class="label">Volatilität (1J):</span> {{ s(p.id).etf?.volatility1y.toFixed(1) }}%
                     ·
-                    <span class="label">Max. Drawdown (1J):</span> {{ s.etf.maxDrawdown1y.toFixed(1) }}%
+                    <span class="label">Max. Drawdown (1J):</span> {{ s(p.id).etf?.maxDrawdown1y.toFixed(1) }}%
                   </div>
 
-                  <div v-if="s.drawdownHint != null" class="muted">
+                  <div v-if="s(p.id).drawdownHint != null" class="muted">
                     <span class="label">Grobe Drawdown-Idee:</span>
                     Bei einem Rückgang wie im (1J) Drawdown läge der Wert ungefähr bei
-                    {{ eur.format(s.drawdownHint) }}
+                    {{ eur.format(s(p.id).drawdownHint as number) }}
                   </div>
                 </div>
 
                 <p class="tiny-muted">
                   *Diese Szenarien sind vereinfachte Annahmen (keine Prognose).
                 </p>
-              </template>
+              </div>
             </div>
           </div>
 
@@ -424,14 +471,7 @@ watch(
             </template>
 
             <template v-else>
-              <!-- 📈 Toggle -->
-              <button
-                class="btn btn-ghost btn-icon"
-                type="button"
-                @click="toggleDetails(p.id)"
-                aria-label="Szenarien"
-                title="Szenarien"
-              >
+              <button class="btn btn-ghost btn-icon" type="button" @click="toggleDetails(p.id)" aria-label="Szenarien" title="Szenarien">
                 📈
               </button>
 
@@ -513,10 +553,6 @@ watch(
   align-items:center;
   gap:0.6rem;
   margin-bottom: 0.5rem;
-}
-
-.scenario-title {
-  color:#e5e7eb;
 }
 
 .scenario-pill{
