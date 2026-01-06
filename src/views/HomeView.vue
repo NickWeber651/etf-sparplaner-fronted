@@ -172,10 +172,9 @@ const successMessage = ref<string | null>(null)
 const reloadKey = ref(0)
 
 async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
-  selectedEtfRaw.value = String(payload.etf ?? '')
-  const chosenName = normalizeEtfName(payload.etf)
-
-  selectedEtf.value = chosenName
+  // UI-State setzen (sofort sichtbar)
+  selectedEtfRaw.value = payload.etf
+  selectedEtf.value = payload.etf
   monthlyRate.value = payload.rate
   years.value = payload.years
 
@@ -184,11 +183,11 @@ async function handleSubmitPlan(payload: { etf: string; rate: number; years: num
   isSaving.value = true
 
   try {
-    let etfNameFormatted = payload.etf
-    const selectedEtfObj = etfs.value.find(e => e.name === chosenName)
-    if (selectedEtfObj) {
-      etfNameFormatted = `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
-    }
+    // Speichern wie gehabt: Name + TER
+    const selectedEtfObj = etfs.value.find(e => e.name === payload.etf)
+    const etfNameFormatted = selectedEtfObj
+      ? `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
+      : payload.etf
 
     await createSparplan({
       etfName: etfNameFormatted,
