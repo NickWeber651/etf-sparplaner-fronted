@@ -28,33 +28,9 @@ interface EtfInfo {
 }
 
 const ETF_INFO: EtfInfo[] = [
-  {
-    id: 1,
-    name: 'S&P 500',
-    isin: 'IE00B5BMR087',
-    ter: 0.0007,
-    volatility1y: 17.0,
-    maxDrawdown1y: -14.0,
-    riskLabel: 'mittel',
-  },
-  {
-    id: 2,
-    name: 'MSCI World',
-    isin: 'IE00B4L5Y983',
-    ter: 0.002,
-    volatility1y: 15.5,
-    maxDrawdown1y: -12.5,
-    riskLabel: 'mittel',
-  },
-  {
-    id: 3,
-    name: 'FTSE All-World',
-    isin: 'IE00B3RBWM25',
-    ter: 0.0022,
-    volatility1y: 16.2,
-    maxDrawdown1y: -13.2,
-    riskLabel: 'mittel',
-  },
+  { id: 1, name: 'S&P 500', isin: 'IE00B5BMR087', ter: 0.0007, volatility1y: 17.0, maxDrawdown1y: -14.0, riskLabel: 'mittel' },
+  { id: 2, name: 'MSCI World', isin: 'IE00B4L5Y983', ter: 0.002, volatility1y: 15.5, maxDrawdown1y: -12.5, riskLabel: 'mittel' },
+  { id: 3, name: 'FTSE All-World', isin: 'IE00B3RBWM25', ter: 0.0022, volatility1y: 16.2, maxDrawdown1y: -13.2, riskLabel: 'mittel' },
 ]
 
 // --- State ---
@@ -245,10 +221,8 @@ function monthlyRateFromAnnual(annualReturn: number): number {
 function futureValueMonthly(pmt: number, years: number, annualReturn: number): number {
   const n = Math.round(years * 12)
   if (n <= 0) return 0
-
   const r = monthlyRateFromAnnual(annualReturn)
   if (Math.abs(r) < 1e-12) return pmt * n
-
   return pmt * ((Math.pow(1 + r, n) - 1) / r)
 }
 
@@ -275,6 +249,19 @@ type Scenario = {
   drawdownHint: number | null
 }
 
+const EMPTY_SCENARIO: Scenario = {
+  etf: null,
+  paidIn: 0,
+  holdYears: 0,
+  worst: 0,
+  base: 0,
+  best: 0,
+  endWorst: 0,
+  endBase: 0,
+  endBest: 0,
+  drawdownHint: null,
+}
+
 function calcScenarios(p: SparplanResponse): Scenario {
   const etf = findEtfInfoByPlanName(p.etfName)
   const base = baseReturnByRiskLabel(etf?.riskLabel)
@@ -282,7 +269,6 @@ function calcScenarios(p: SparplanResponse): Scenario {
   const best = base + 0.03
 
   const paidIn = p.monatlicheRate * 12 * p.laufzeitJahre
-
   const holdYears = getHoldYears(p.id)
   const holdMonths = Math.round(holdYears * 12)
 
@@ -296,29 +282,19 @@ function calcScenarios(p: SparplanResponse): Scenario {
 
   const drawdownHint = etf?.maxDrawdown1y != null ? endBase * (1 + etf.maxDrawdown1y / 100) : null
 
-  return {
-    etf,
-    paidIn,
-    holdYears,
-    worst,
-    base,
-    best,
-    endWorst,
-    endBase,
-    endBest,
-    drawdownHint,
-  }
+  return { etf, paidIn, holdYears, worst, base, best, endWorst, endBase, endBest, drawdownHint }
 }
 
-// (optional) Cache pro Plan-ID, damit wir im Template nicht 100x rechnen
+// Cache pro Plan-ID
 const scenariosById = computed<Record<number, Scenario>>(() => {
   const out: Record<number, Scenario> = {}
   for (const p of sparplaene.value) out[p.id] = calcScenarios(p)
   return out
 })
 
-function s(id: number) {
-  return scenariosById.value[id]
+// ✅ WICHTIG: s() liefert IMMER ein Scenario, nie undefined → TS2532 weg
+function s(id: number): Scenario {
+  return scenariosById.value[id] ?? EMPTY_SCENARIO
 }
 
 onMounted(() => {
@@ -357,9 +333,7 @@ watch(
     </div>
 
     <div v-else>
-      <p v-if="sparplaene.length === 0" class="hint">
-        Noch keine Sparpläne gespeichert.
-      </p>
+      <p v-if="sparplaene.length === 0" class="hint">Noch keine Sparpläne gespeichert.</p>
 
       <ul v-else class="list" role="list">
         <li v-for="p in sparplaene" :key="p.id" class="item" role="listitem">
@@ -394,56 +368,53 @@ watch(
               </label>
             </div>
 
-            <!-- ✅ Szenario-Details -->
             <div v-if="expandedId === p.id" class="scenario-box">
-              <div v-if="s(p.id)">
-                <div class="scenario-head">
-                  <strong class="scenario-title">Szenarien</strong>
-                  <span v-if="s(p.id).etf" class="scenario-pill">
-                    Risiko: {{ s(p.id).etf?.riskLabel }}
-                  </span>
-                </div>
-
-                <div class="hold-row">
-                  <label class="hold-label">
-                    Haltezeit nach Sparphase (Jahre)
-                    <input
-                      class="hold-input"
-                      type="number"
-                      min="0"
-                      max="60"
-                      step="1"
-                      :value="getHoldYears(p.id)"
-                      @input="setHoldYears(p.id, Number(($event.target as HTMLInputElement).value))"
-                    />
-                  </label>
-                  <span class="hold-hint">(Frontend-only, gespeichert im Browser)</span>
-                </div>
-
-                <div class="scenario-grid">
-                  <div><span class="label">Einzahlung:</span> {{ eur.format(s(p.id).paidIn) }}</div>
-
-                  <div><span class="label">Worst ({{ fmtPct(s(p.id).worst) }}):</span> {{ eur.format(s(p.id).endWorst) }}</div>
-                  <div><span class="label">Basis ({{ fmtPct(s(p.id).base) }}):</span> {{ eur.format(s(p.id).endBase) }}</div>
-                  <div><span class="label">Best ({{ fmtPct(s(p.id).best) }}):</span> {{ eur.format(s(p.id).endBest) }}</div>
-
-                  <div v-if="s(p.id).etf" class="muted">
-                    <span class="label">Volatilität (1J):</span> {{ s(p.id).etf?.volatility1y.toFixed(1) }}%
-                    ·
-                    <span class="label">Max. Drawdown (1J):</span> {{ s(p.id).etf?.maxDrawdown1y.toFixed(1) }}%
-                  </div>
-
-                  <div v-if="s(p.id).drawdownHint != null" class="muted">
-                    <span class="label">Grobe Drawdown-Idee:</span>
-                    Bei einem Rückgang wie im (1J) Drawdown läge der Wert ungefähr bei
-                    {{ eur.format(s(p.id).drawdownHint as number) }}
-                  </div>
-                </div>
-
-                <p class="tiny-muted">
-                  *Diese Szenarien sind vereinfachte Annahmen (keine Prognose).
-                </p>
+              <div class="scenario-head">
+                <strong class="scenario-title">Szenarien</strong>
+                <span v-if="s(p.id).etf" class="scenario-pill">
+                  Risiko: {{ s(p.id).etf?.riskLabel }}
+                </span>
               </div>
+
+              <div class="hold-row">
+                <label class="hold-label">
+                  Haltezeit nach Sparphase (Jahre)
+                  <input
+                    class="hold-input"
+                    type="number"
+                    min="0"
+                    max="60"
+                    step="1"
+                    :value="getHoldYears(p.id)"
+                    @input="setHoldYears(p.id, Number(($event.target as HTMLInputElement).value))"
+                  />
+                </label>
+                <span class="hold-hint">(Frontend-only, gespeichert im Browser)</span>
+              </div>
+
+              <div class="scenario-grid">
+                <div><span class="label">Einzahlung:</span> {{ eur.format(s(p.id).paidIn) }}</div>
+
+                <div><span class="label">Worst ({{ fmtPct(s(p.id).worst) }}):</span> {{ eur.format(s(p.id).endWorst) }}</div>
+                <div><span class="label">Basis ({{ fmtPct(s(p.id).base) }}):</span> {{ eur.format(s(p.id).endBase) }}</div>
+                <div><span class="label">Best ({{ fmtPct(s(p.id).best) }}):</span> {{ eur.format(s(p.id).endBest) }}</div>
+
+                <div v-if="s(p.id).etf" class="muted">
+                  <span class="label">Volatilität (1J):</span> {{ s(p.id).etf?.volatility1y.toFixed(1) }}%
+                  ·
+                  <span class="label">Max. Drawdown (1J):</span> {{ s(p.id).etf?.maxDrawdown1y.toFixed(1) }}%
+                </div>
+
+                <div v-if="s(p.id).drawdownHint != null" class="muted">
+                  <span class="label">Grobe Drawdown-Idee:</span>
+                  Bei einem Rückgang wie im (1J) Drawdown läge der Wert ungefähr bei
+                  {{ eur.format(s(p.id).drawdownHint!) }}
+                </div>
+              </div>
+
+              <p class="tiny-muted">
+                *Diese Szenarien sind vereinfachte Annahmen (keine Prognose).
+              </p>
             </div>
           </div>
 
@@ -538,77 +509,19 @@ watch(
 .spinner { width:16px; height:16px; border-radius:999px; border:2px solid rgba(229,231,235,.35); border-top-color:rgba(229,231,235,.95); animation:spin .8s linear infinite; display:inline-block; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-/* --- Szenarien --- */
-.scenario-box {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 12px;
-  border: 1px solid rgba(229,231,235,.12);
-  background: rgba(17,24,39,.30);
-  color: #e5e7eb;
-}
+.scenario-box { margin-top:0.75rem; padding:0.75rem; border-radius:12px; border:1px solid rgba(229,231,235,.12); background: rgba(17,24,39,.30); color:#e5e7eb; }
+.scenario-head { display:flex; align-items:center; gap:0.6rem; margin-bottom:0.5rem; }
+.scenario-pill{ font-size:.8rem; color:#cbd5e1; background: rgba(229,231,235,.08); border:1px solid rgba(229,231,235,.12); padding:0.15rem 0.5rem; border-radius:999px; }
 
-.scenario-head {
-  display:flex;
-  align-items:center;
-  gap:0.6rem;
-  margin-bottom: 0.5rem;
-}
-
-.scenario-pill{
-  font-size:.8rem;
-  color:#cbd5e1;
-  background: rgba(229,231,235,.08);
-  border: 1px solid rgba(229,231,235,.12);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-}
-
-.hold-row{
-  display:flex;
-  align-items:center;
-  gap:0.75rem;
-  flex-wrap:wrap;
-  margin: 0.35rem 0 0.65rem;
-}
-
-.hold-label{
-  display:flex;
-  align-items:center;
-  gap:0.5rem;
-  color:#cbd5e1;
-  font-size:.92rem;
-}
-
-.hold-input{
-  width: 90px;
-  padding:.45rem .55rem;
-  border-radius:10px;
-  border:1px solid rgba(229,231,235,.18);
-  background:rgba(17,24,39,.35);
-  color:#e5e7eb;
-  outline:none;
-}
+.hold-row{ display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin: 0.35rem 0 0.65rem; }
+.hold-label{ display:flex; align-items:center; gap:0.5rem; color:#cbd5e1; font-size:.92rem; }
+.hold-input{ width:90px; padding:.45rem .55rem; border-radius:10px; border:1px solid rgba(229,231,235,.18); background:rgba(17,24,39,.35); color:#e5e7eb; outline:none; }
 .hold-input:focus { border-color:rgba(65,184,131,.65); box-shadow:0 0 0 3px rgba(65,184,131,.18); }
+.hold-hint{ color:#94a3b8; font-size:.85rem; }
 
-.hold-hint{
-  color:#94a3b8;
-  font-size:.85rem;
-}
-
-.scenario-grid {
-  display: grid;
-  gap: 0.35rem;
-  color:#e5e7eb;
-}
-
+.scenario-grid { display:grid; gap:0.35rem; color:#e5e7eb; }
 .muted { color:#cbd5e1; }
-
-.tiny-muted {
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
+.tiny-muted { margin-top:0.5rem; font-size:0.8rem; color:#94a3b8; }
 
 @media (max-width:700px){
   .edit-panel{ grid-template-columns:1fr; }
