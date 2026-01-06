@@ -39,8 +39,8 @@ watchEffect(async (onCleanup) => {
   }
 })
 
-function fmtRate(x: number) {
-  return x.toFixed(4)
+function fmtRate(x?: number) {
+  return typeof x === 'number' ? x.toFixed(4) : '—'
 }
 </script>
 
@@ -98,7 +98,7 @@ function fmtRate(x: number) {
   padding:.7rem .75rem;
   border-radius: 10px;
   background: rgba(229,231,235,.06);
-  border: 1px solid rgba(229,231,235,.10);
+  border: 1px solid rgba(229,231,235,.10);å
 }
 .sym{ font-weight:700; color:#e5e7eb; }
 .rate{ font-size: 1.2rem; font-weight:800; color:#93c5fd; margin-top:.2rem; }
