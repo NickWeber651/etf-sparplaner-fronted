@@ -3,7 +3,10 @@
  * === ABOUT-VIEW ===
  * Informationsseite über das Projekt
  */
+import { computed } from 'vue'
 import AppNav from '../components/AppNav.vue'
+
+const year = computed(() => new Date().getFullYear())
 </script>
 
 <template>
@@ -19,26 +22,32 @@ import AppNav from '../components/AppNav.vue'
         </p>
       </header>
 
-      <section class="section">
-        <h2 class="h2">Team</h2>
-        <div class="team">
-          <div class="person">
-            <div class="avatar">LS</div>
-            <div class="meta">
-              <div class="name">Leonhard Siewert</div>
-              <div class="role">Frontend · Architektur · UI</div>
-            </div>
-          </div>
+<section class="section">
+  <h2 class="h2">Team</h2>
 
-          <div class="person">
-            <div class="avatar">NW</div>
-            <div class="meta">
-              <div class="name">Nick Weber</div>
-              <div class="role">Frontend · API-Integration · Features</div>
-            </div>
-          </div>
-        </div>
-      </section>
+  <p class="team-note">
+    Dieses Projekt wurde gemeinsam von <strong>Leonhard Siewert</strong> und <strong>Nick Weber</strong> umgesetzt –
+    ohne feste Rollenverteilung (gemeinsames Feature-Ownership).
+  </p>
+
+  <div class="team">
+    <div class="person">
+      <div class="avatar">LS</div>
+      <div class="meta">
+        <div class="name">Leonhard Siewert</div>
+        <div class="role">Frontend · Backend · API · UI/UX</div>
+      </div>
+    </div>
+
+    <div class="person">
+      <div class="avatar">NW</div>
+      <div class="meta">
+        <div class="name">Nick Weber</div>
+        <div class="role">Frontend · Backend · API · UI/UX</div>
+      </div>
+    </div>
+  </div>
+</section>
 
       <section class="section">
         <h2 class="h2">Technologie-Stack</h2>
