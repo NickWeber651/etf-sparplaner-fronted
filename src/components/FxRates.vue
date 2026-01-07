@@ -98,7 +98,7 @@ function fmtRate(x?: number) {
   padding:.7rem .75rem;
   border-radius: 10px;
   background: rgba(229,231,235,.06);
-  border: 1px solid rgba(229,231,235,.10);å
+  border: 1px solid rgba(229,231,235,.10);
 }
 .sym{ font-weight:700; color:#e5e7eb; }
 .rate{ font-size: 1.2rem; font-weight:800; color:#93c5fd; margin-top:.2rem; }
