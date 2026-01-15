@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
+import NumberLimitedInput from './NumberLimitedInput.vue'
 import CharLimitedInput from './CharLimitedInput.vue'
 import {
   getSparplaene,
@@ -361,16 +362,27 @@ watch(
   aria-label="ETF Name"
 />              </label>
 
-              <label class="field">
-                <span class="field-label">Monatliche Rate (€)</span>
-                <input class="input" v-model.number="editForm.monatlicheRate" type="number" min="25" max="10000" step="1" />
-              </label>
+             <label class="field">
+               <span class="field-label">Monatliche Rate (€)</span>
+               <NumberLimitedInput
+                 v-model="editForm.monatlicheRate"
+                 :min="25"
+                 :max="10000"
+                 :maxDigits="5"
+                 aria-label="Monatliche Rate"
+               />
+             </label>
 
-              <label class="field">
-                <span class="field-label">Laufzeit (Jahre)</span>
-                <input class="input" v-model.number="editForm.laufzeitJahre" type="number" min="1" max="60" step="1" />
-              </label>
-            </div>
+             <label class="field">
+               <span class="field-label">Laufzeit (Jahre)</span>
+               <NumberLimitedInput
+                 v-model="editForm.laufzeitJahre"
+                 :min="1"
+                 :max="60"
+                 :maxDigits="2"
+                 aria-label="Laufzeit"
+               />
+             </label>
 
             <div v-if="expandedId === p.id" class="scenario-box">
               <div class="scenario-head">
