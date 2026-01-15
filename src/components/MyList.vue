@@ -356,33 +356,35 @@ watch(
             <div v-if="editingId === p.id" class="edit-panel">
               <label class="field">
                 <span class="field-label">ETF</span>
-<CharLimitedInput
-  v-model="editForm.etfName"
-  :maxlength="60"
-  aria-label="ETF Name"
-/>              </label>
+                <CharLimitedInput
+                  v-model="editForm.etfName"
+                  :maxlength="60"
+                  aria-label="ETF Name"
+                />
+              </label>
 
-             <label class="field">
-               <span class="field-label">Monatliche Rate (€)</span>
-               <NumberLimitedInput
-                 v-model="editForm.monatlicheRate"
-                 :min="25"
-                 :max="10000"
-                 :maxDigits="5"
-                 aria-label="Monatliche Rate"
-               />
-             </label>
+              <label class="field">
+                <span class="field-label">Monatliche Rate (€)</span>
+                <NumberLimitedInput
+                  v-model="editForm.monatlicheRate"
+                  :min="25"
+                  :max="10000"
+                  :maxDigits="5"
+                  aria-label="Monatliche Rate"
+                />
+              </label>
 
-             <label class="field">
-               <span class="field-label">Laufzeit (Jahre)</span>
-               <NumberLimitedInput
-                 v-model="editForm.laufzeitJahre"
-                 :min="1"
-                 :max="60"
-                 :maxDigits="2"
-                 aria-label="Laufzeit"
-               />
-             </label>
+              <label class="field">
+                <span class="field-label">Laufzeit (Jahre)</span>
+                <NumberLimitedInput
+                  v-model="editForm.laufzeitJahre"
+                  :min="1"
+                  :max="60"
+                  :maxDigits="2"
+                  aria-label="Laufzeit"
+                />
+              </label>
+            </div>
 
             <div v-if="expandedId === p.id" class="scenario-box">
               <div class="scenario-head">
