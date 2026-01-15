@@ -44,6 +44,50 @@ function validatePasswordLength(password: string, context = 'Passwort') {
   }
 }
 
+/* === NEUE KONSTANTEN: LIMITS FÜR SPARPLAN-FELDER (ETF-NAME, BETRAG, LAUFZEIT) === */
+/* keep small limits per your request */
+export const MAX_ETF_NAME_LENGTH = 30        // max characters for ETF name
+export const MAX_AMOUNT_DIGITS = 12          // max total chars for amount (incl. decimals, dot/comma)
+export const MAX_DURATION_YEARS = 50         // max years for Laufzeit
+
+/* === NEUE VALIDATOR-HELPER FÜR SPARPLÄNE === */
+export function validateEtfName(name: string, context = 'ETF-Name') {
+  const len = String(name || '').trim().length
+  if (len === 0) {
+    throw new Error(`${context} darf nicht leer sein`)
+  }
+  if (len > MAX_ETF_NAME_LENGTH) {
+    throw new Error(`${context} ist zu lang (max. ${MAX_ETF_NAME_LENGTH} Zeichen)`)
+  }
+}
+
+export function validateAmount(amount: string | number, context = 'Betrag') {
+  const str = String(amount ?? '').trim()
+  if (str.length === 0) {
+    throw new Error(`${context} darf nicht leer sein`)
+  }
+  // allow digits, optional decimal separator; limit total length to avoid huge inputs
+  if (str.length > MAX_AMOUNT_DIGITS) {
+    throw new Error(`${context} ist zu lang (max. ${MAX_AMOUNT_DIGITS} Zeichen)`)
+  }
+  // basic numeric check
+  const normalized = str.replace(',', '.')
+  const n = Number(normalized)
+  if (!isFinite(n) || n < 0) {
+    throw new Error(`${context} muss eine gültige positive Zahl sein`)
+  }
+}
+
+export function validateDuration(years: number | string, context = 'Laufzeit') {
+  const n = Number(years)
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error(`${context} muss eine positive Zahl sein`)
+  }
+  if (n > MAX_DURATION_YEARS) {
+    throw new Error(`${context} ist zu groß (max. ${MAX_DURATION_YEARS} Jahre)`)
+  }
+}
+
 /**
  * === TYPESCRIPT INTERFACES ===
  */
