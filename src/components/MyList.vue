@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
+import CharLimitedInput from './CharLimitedInput.vue'
 import {
   getSparplaene,
   deleteSparplan,
@@ -354,8 +355,11 @@ watch(
             <div v-if="editingId === p.id" class="edit-panel">
               <label class="field">
                 <span class="field-label">ETF</span>
-                <input class="input" v-model="editForm.etfName" type="text" />
-              </label>
+<CharLimitedInput
+  v-model="editForm.etfName"
+  :maxlength="60"
+  aria-label="ETF Name"
+/>              </label>
 
               <label class="field">
                 <span class="field-label">Monatliche Rate (€)</span>
