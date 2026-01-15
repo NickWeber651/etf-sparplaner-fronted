@@ -44,6 +44,10 @@ export interface AuthResponse {
  * Hilfsfunktionen für Token-Management
  */
 
+function normalizeEmail(email: string): string {
+  return String(email || '').trim().toLowerCase()
+}
+
 /**
  * Token im localStorage speichern
  */
@@ -63,7 +67,8 @@ export function getToken(): string | null {
  * User-Email im localStorage speichern
  */
 export function saveUserEmail(email: string): void {
-  localStorage.setItem(USER_EMAIL_KEY, email)
+  // store canonical (trimmed + lowercase) email to avoid mismatches
+  localStorage.setItem(USER_EMAIL_KEY, normalizeEmail(email))
 }
 
 /**
@@ -103,30 +108,33 @@ export function logout(): void {
  */
 export async function login(email: string, password: string): Promise<AuthResponse> {
   try {
+    const canonicalEmail = normalizeEmail(email)
     const response = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password } as AuthRequest),
+      body: JSON.stringify({ email: canonicalEmail, password } as AuthRequest),
     })
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => null)
+      const errMsg = errorData?.error || errorData?.message
       if (response.status === 401) {
-        throw new Error('Ungültige E-Mail oder Passwort')
+        throw new Error(errMsg || 'Ungültige E-Mail oder Passwort')
       }
-      const errorData = await response.json().catch(() => ({ message: 'Unbekannter Fehler' }))
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+      throw new Error(errMsg || `HTTP ${response.status}: ${response.statusText}`)
     }
 
     const data: AuthResponse = await response.json()
 
-    // Token und Email im localStorage speichern
+    // Token und canonical Email im localStorage speichern
     saveToken(data.token)
-    saveUserEmail(data.email)
+    saveUserEmail(canonicalEmail)
 
-    console.log('✅ Login erfolgreich:', data.email)
-    return data
+    console.log('✅ Login erfolgreich:', canonicalEmail)
+    // return normalized email to caller
+    return { ...data, email: canonicalEmail }
 
   } catch (error) {
     console.error('❌ Login fehlgeschlagen:', error)
@@ -144,30 +152,35 @@ export async function login(email: string, password: string): Promise<AuthRespon
  */
 export async function register(email: string, password: string): Promise<AuthResponse> {
   try {
+    const canonicalEmail = normalizeEmail(email)
     const response = await fetch(`${BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password } as AuthRequest),
+      body: JSON.stringify({ email: canonicalEmail, password } as AuthRequest),
     })
 
     if (!response.ok) {
-      if (response.status === 400) {
-        throw new Error('Diese E-Mail-Adresse ist bereits registriert')
+      const errorData = await response.json().catch(() => null)
+      const errMsg = errorData?.error || errorData?.message
+
+      // common duplicate statuses: 400 or 409 -> map to friendly duplicate message if backend doesn't provide one
+      if (response.status === 400 || response.status === 409) {
+        throw new Error(errMsg || 'Diese E-Mail-Adresse ist bereits registriert')
       }
-      const errorData = await response.json().catch(() => ({ message: 'Unbekannter Fehler' }))
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+
+      throw new Error(errMsg || `HTTP ${response.status}: ${response.statusText}`)
     }
 
     const data: AuthResponse = await response.json()
 
-    // Token und Email im localStorage speichern (Auto-Login nach Registrierung)
+    // Token und canonical Email im localStorage speichern (Auto-Login nach Registrierung)
     saveToken(data.token)
-    saveUserEmail(data.email)
+    saveUserEmail(canonicalEmail)
 
-    console.log('✅ Registrierung erfolgreich:', data.email)
-    return data
+    console.log('✅ Registrierung erfolgreich:', canonicalEmail)
+    return { ...data, email: canonicalEmail }
 
   } catch (error) {
     console.error('❌ Registrierung fehlgeschlagen:', error)
@@ -185,27 +198,28 @@ export async function register(email: string, password: string): Promise<AuthRes
  */
 export async function resetPassword(email: string, newPassword: string): Promise<void> {
   try {
+    const canonicalEmail = normalizeEmail(email)
     const response = await fetch(`${BASE_URL}/api/auth/reset-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, newPassword }),
+      body: JSON.stringify({ email: canonicalEmail, newPassword }),
     })
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => null)
+      const errMsg = errorData?.error || errorData?.message
       if (response.status === 404) {
-        throw new Error('E-Mail-Adresse nicht gefunden')
+        throw new Error(errMsg || 'E-Mail-Adresse nicht gefunden')
       }
-      const errorData = await response.json().catch(() => ({ message: 'Unbekannter Fehler' }))
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+      throw new Error(errMsg || `HTTP ${response.status}: ${response.statusText}`)
     }
 
-    console.log('✅ Passwort erfolgreich zurückgesetzt für:', email)
+    console.log('✅ Passwort erfolgreich zurückgesetzt für:', canonicalEmail)
 
   } catch (error) {
     console.error('❌ Passwort-Reset fehlgeschlagen:', error)
     throw error
   }
 }
-
