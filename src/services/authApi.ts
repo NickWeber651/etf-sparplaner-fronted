@@ -70,6 +70,9 @@ export function validateAmount(amount: string | number, context = 'Betrag') {
   if (str.length > MAX_AMOUNT_DIGITS) {
     throw new Error(`${context} ist zu lang (max. ${MAX_AMOUNT_DIGITS} Zeichen)`)
   }
+  if (!/^\d+([.,]\d{1,2})?$/.test(str)) {
+    throw new Error(`${context} muss eine gültige Zahl sein (max. 2 Dezimalstellen)`)
+  }
   // basic numeric check
   const normalized = str.replace(',', '.')
   const n = Number(normalized)
