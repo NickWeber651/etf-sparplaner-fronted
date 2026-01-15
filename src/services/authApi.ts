@@ -16,12 +16,33 @@
  */
 const BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL || 'http://localhost:8080'
 
-/**
- * === LOCALSTORAGE KEY ===
- * Konstante für den Key, unter dem der Token gespeichert wird
- */
 const TOKEN_KEY = 'auth_token'
 const USER_EMAIL_KEY = 'user_email'
+
+/* === NEUE KONSTANTEN: MAX-LÄNGEN FÜR INPUTS === */
+export const MAX_EMAIL_LENGTH = 254
+export const MAX_PASSWORD_LENGTH = 128
+
+/* === NEUE HILFSFUNKTIONEN: VALIDIERUNG VOR API-Aufruf === */
+function validateEmailLength(email: string, context = 'E-Mail') {
+  const len = String(email || '').trim().length
+  if (len === 0) {
+    throw new Error(`${context} darf nicht leer sein`)
+  }
+  if (len > MAX_EMAIL_LENGTH) {
+    throw new Error(`${context} ist zu lang (max. ${MAX_EMAIL_LENGTH} Zeichen)`)
+  }
+}
+
+function validatePasswordLength(password: string, context = 'Passwort') {
+  const len = String(password || '').length
+  if (len === 0) {
+    throw new Error(`${context} darf nicht leer sein`)
+  }
+  if (len > MAX_PASSWORD_LENGTH) {
+    throw new Error(`${context} ist zu lang (max. ${MAX_PASSWORD_LENGTH} Zeichen)`)
+  }
+}
 
 /**
  * === TYPESCRIPT INTERFACES ===
@@ -108,6 +129,9 @@ export function logout(): void {
  */
 export async function login(email: string, password: string): Promise<AuthResponse> {
   try {
+    // clientseitige Validierung: verhindert sehr lange/empty Eingaben
+    validateEmailLength(email)
+    validatePasswordLength(password)
     const canonicalEmail = normalizeEmail(email)
     const response = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
@@ -152,6 +176,9 @@ export async function login(email: string, password: string): Promise<AuthRespon
  */
 export async function register(email: string, password: string): Promise<AuthResponse> {
   try {
+    // clientseitige Validierung vor Registrierung
+    validateEmailLength(email)
+    validatePasswordLength(password)
     const canonicalEmail = normalizeEmail(email)
     const response = await fetch(`${BASE_URL}/api/auth/register`, {
       method: 'POST',
@@ -206,6 +233,9 @@ export async function register(email: string, password: string): Promise<AuthRes
  */
 export async function resetPassword(email: string, newPassword: string): Promise<void> {
   try {
+    // Validierung: E-Mail und neues Passwort
+    validateEmailLength(email, 'E-Mail')
+    validatePasswordLength(newPassword, 'Neues Passwort')
     const canonicalEmail = normalizeEmail(email)
     const response = await fetch(`${BASE_URL}/api/auth/reset-password`, {
       method: 'POST',
