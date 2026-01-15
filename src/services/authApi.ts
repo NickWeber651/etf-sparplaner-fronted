@@ -162,11 +162,19 @@ export async function register(email: string, password: string): Promise<AuthRes
     })
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null)
-      const errMsg = errorData?.error || errorData?.message
+      // robustes Parsen: JSON, sonst Text (Backend kann unterschiedliche Formate liefern)
+      const txt = await response.text().catch(() => '')
+      let parsed: any = null
+      try {
+        parsed = txt ? JSON.parse(txt) : null
+      } catch {
+        parsed = null
+      }
+      const errMsg = parsed?.error || parsed?.message || txt || null
 
-      // common duplicate statuses: 400 or 409 -> map to friendly duplicate message if backend doesn't provide one
-      if (response.status === 400 || response.status === 409) {
+      // Nur 409 = Conflict wird eindeutig als "bereits registriert" interpretiert.
+      // 400 kann Validierungsfehler (z.B. schwaches Passwort) sein — gib die Backend-Meldung weiter.
+      if (response.status === 409) {
         throw new Error(errMsg || 'Diese E-Mail-Adresse ist bereits registriert')
       }
 
