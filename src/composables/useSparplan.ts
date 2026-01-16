@@ -8,6 +8,7 @@ import {
   updateSparplan,
   deleteSparplan,
 } from '@/services/sparplanApi'
+import { validateSparplanRequest } from '@/utils/validation.utils'
 
 export function useSparplan() {
   const sparplaene = ref<SparplanResponse[]>([])
@@ -34,6 +35,9 @@ export function useSparplan() {
     error.value = null
 
     try {
+      // Validiere Input-Daten
+      validateSparplanRequest(data)
+
       const newSparplan = await createSparplan(data)
       sparplaene.value.push(newSparplan)
       return newSparplan
@@ -51,6 +55,9 @@ export function useSparplan() {
     error.value = null
 
     try {
+      // Validiere Input-Daten
+      validateSparplanRequest(data)
+
       const updated = await updateSparplan(id, data)
       const index = sparplaene.value.findIndex(p => p.id === id)
 

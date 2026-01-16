@@ -86,7 +86,9 @@ const {
           :class="{ invalid: !isRateValid }"
           min="25"
           max="10000"
+          step="1"
           required
+          @input="monthlyRate = Math.max(25, Math.min(10000, Math.abs(monthlyRate || 0)))"
         />
         <!-- Fehlermeldung erscheint nur bei ungültiger Eingabe -->
         <span v-if="!isRateValid" class="error">Sparrate muss zwischen 25 und 10.000 € liegen</span>
@@ -102,7 +104,9 @@ const {
           :class="{ invalid: !isYearsValid }"
           min="1"
           max="50"
+          step="1"
           required
+          @input="years = Math.max(1, Math.min(50, Math.abs(years || 0)))"
         />
         <span v-if="!isYearsValid" class="error">Laufzeit muss zwischen 1 und 50 Jahren liegen</span>
       </div>

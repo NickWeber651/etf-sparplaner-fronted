@@ -17,6 +17,11 @@ import {
 import { getAllEtfs, findEtfByInput } from '@/services/etfService'
 import { clamp } from '@/utils/number.utils'
 import {
+  sanitizeNumberInput,
+  validateSparplanRequest,
+  VALIDATION_LIMITS,
+} from '@/utils/validation.utils'
+import {
   calculateScenarios,
   formatPercent,
   type Scenario,
@@ -116,7 +121,14 @@ export function useMyList(props: { reloadKey?: number }) {
   }
 
   function updateHoldYears(id: number, years: number): void {
-    holdYearsByPlanId.value = setHoldYearsForPlan(holdYearsByPlanId.value, id, years)
+    // Sanitize Input: verhindere negative Zahlen und extreme Werte
+    const sanitized = sanitizeNumberInput(
+      years,
+      0,
+      VALIDATION_LIMITS.REASONABLE_MAX_YEARS,
+      0
+    )
+    holdYearsByPlanId.value = setHoldYearsForPlan(holdYearsByPlanId.value, id, sanitized)
     saveHoldYears(HOLD_STORAGE_KEY, holdYearsByPlanId.value)
   }
 
@@ -160,8 +172,35 @@ export function useMyList(props: { reloadKey?: number }) {
   async function saveEdit(id: number): Promise<void> {
     error.value = null
     savingId.value = id
+
     try {
-      const updated = await updateSparplan(id, editForm.value)
+      // Sanitize Inputs bevor Validierung
+      const sanitizedRate = sanitizeNumberInput(
+        editForm.value.monatlicheRate,
+        VALIDATION_LIMITS.SPARRATE_MIN,
+        VALIDATION_LIMITS.SPARRATE_MAX,
+        VALIDATION_LIMITS.SPARRATE_MIN
+      )
+
+      const sanitizedYears = sanitizeNumberInput(
+        editForm.value.laufzeitJahre,
+        VALIDATION_LIMITS.YEARS_MIN,
+        VALIDATION_LIMITS.YEARS_MAX,
+        VALIDATION_LIMITS.YEARS_MIN
+      )
+
+      // Erstelle bereinigtes Request-Objekt
+      const sanitizedRequest: SparplanRequest = {
+        etfName: editForm.value.etfName,
+        monatlicheRate: sanitizedRate,
+        laufzeitJahre: sanitizedYears,
+      }
+
+      // Validiere kompletten Request
+      validateSparplanRequest(sanitizedRequest)
+
+      // Update durchführen
+      const updated = await updateSparplan(id, sanitizedRequest)
       sparplaene.value = sparplaene.value.map(p => (p.id === id ? updated : p))
       editingId.value = null
     } catch (e: unknown) {

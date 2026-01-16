@@ -114,7 +114,10 @@ const s = getScenario
                   v-model.number="editForm.monatlicheRate"
                   min="25"
                   max="10000"
+                  step="1"
+                  required
                   aria-label="Monatliche Rate"
+                  @input="editForm.monatlicheRate = Math.max(25, Math.min(10000, Math.abs(editForm.monatlicheRate || 0)))"
                 />
               </label>
 
@@ -125,8 +128,11 @@ const s = getScenario
                   type="number"
                   v-model.number="editForm.laufzeitJahre"
                   min="1"
-                  max="60"
+                  max="50"
+                  step="1"
+                  required
                   aria-label="Laufzeit"
+                  @input="editForm.laufzeitJahre = Math.max(1, Math.min(50, Math.abs(editForm.laufzeitJahre || 0)))"
                 />
               </label>
             </div>
@@ -146,13 +152,15 @@ const s = getScenario
                     class="hold-input"
                     type="number"
                     min="0"
-                    max="60"
+                    max="100"
                     step="1"
                     :value="getHoldYearsValue(p.id)"
-                    @input="updateHoldYears(p.id, Number(($event.target as HTMLInputElement).value))"
+                    @input="(e) => {
+                      const val = Math.max(0, Math.min(100, Math.abs(Number((e.target as HTMLInputElement).value) || 0)));
+                      updateHoldYears(p.id, val);
+                    }"
                   />
                 </label>
-                <span class="hold-hint">(Frontend-only, gespeichert im Browser)</span>
               </div>
 
               <div class="scenario-grid">

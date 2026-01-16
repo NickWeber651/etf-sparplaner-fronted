@@ -11,6 +11,10 @@ import {
   validateDuration,
   isValidSparrate,
   isValidLaufzeit,
+  sanitizeNumberInput,
+  validateSparrate,
+  validateYears,
+  validateSparplanRequest,
   VALIDATION_LIMITS,
 } from '@/utils/validation.utils'
 
@@ -134,5 +138,139 @@ describe('validation.utils', () => {
       expect(isValidLaufzeit(-5)).toBe(false)
     })
   })
+
+  describe('sanitizeNumberInput', () => {
+    it('sollte gültige Zahlen durchlassen', () => {
+      expect(sanitizeNumberInput(100, 0, 200, 50)).toBe(100)
+      expect(sanitizeNumberInput('150', 0, 200, 50)).toBe(150)
+    })
+
+    it('sollte negative Zahlen auf Minimum clampen', () => {
+      expect(sanitizeNumberInput(-100, 0, 200, 50)).toBe(0)
+      expect(sanitizeNumberInput('-50', 25, 10000, 100)).toBe(25)
+    })
+
+    it('sollte zu große Zahlen auf Maximum clampen', () => {
+      expect(sanitizeNumberInput(300, 0, 200, 50)).toBe(200)
+      expect(sanitizeNumberInput(99999999, 25, 10000, 100)).toBe(10000)
+    })
+
+    it('sollte extreme Werte mit Default ersetzen', () => {
+      expect(sanitizeNumberInput(Infinity, 0, 200, 50)).toBe(50)
+      expect(sanitizeNumberInput(-Infinity, 0, 200, 50)).toBe(50)
+      expect(sanitizeNumberInput(NaN, 0, 200, 50)).toBe(50)
+    })
+
+    it('sollte extrem große Zahlen abfangen', () => {
+      const hugeNumber = '9999999999999999999999999999'
+      expect(sanitizeNumberInput(hugeNumber, 25, 10000, 200)).toBe(200)
+    })
+
+    it('sollte null und undefined behandeln', () => {
+      // null/undefined gibt defaultValue zurück
+      expect(sanitizeNumberInput(null, 0, 200, 50)).toBe(50)
+      expect(sanitizeNumberInput(undefined, 0, 200, 50)).toBe(50)
+      // Auch mit anderen defaults
+      expect(sanitizeNumberInput(null, 25, 200, 100)).toBe(100)
+      expect(sanitizeNumberInput(undefined, 25, 200, 100)).toBe(100)
+    })
+  })
+
+  describe('validateSparrate', () => {
+    it('sollte gültige Sparraten akzeptieren', () => {
+      expect(validateSparrate(25, false)).toBe(true)
+      expect(validateSparrate(100, false)).toBe(true)
+      expect(validateSparrate(10000, false)).toBe(true)
+    })
+
+    it('sollte negative Sparraten ablehnen', () => {
+      expect(validateSparrate(-100, false)).toBe(false)
+      expect(() => validateSparrate(-100, true)).toThrow('negativ')
+    })
+
+    it('sollte zu kleine Sparraten ablehnen', () => {
+      expect(validateSparrate(10, false)).toBe(false)
+      expect(() => validateSparrate(10, true)).toThrow('mindestens 25')
+    })
+
+    it('sollte zu große Sparraten ablehnen', () => {
+      expect(validateSparrate(20000, false)).toBe(false)
+      expect(() => validateSparrate(20000, true)).toThrow('maximal')
+    })
+
+    it('sollte unrealistische Werte ablehnen', () => {
+      expect(validateSparrate(9999999999, false)).toBe(false)
+      expect(() => validateSparrate(9999999999, true)).toThrow('unrealistisch')
+    })
+
+    it('sollte ungültige Typen ablehnen', () => {
+      expect(validateSparrate(NaN, false)).toBe(false)
+      expect(validateSparrate(Infinity, false)).toBe(false)
+      expect(() => validateSparrate('abc', true)).toThrow('gültige Zahl')
+    })
+  })
+
+  describe('validateYears', () => {
+    it('sollte gültige Laufzeiten akzeptieren', () => {
+      expect(validateYears(1, false)).toBe(true)
+      expect(validateYears(25, false)).toBe(true)
+      expect(validateYears(50, false)).toBe(true)
+    })
+
+    it('sollte negative Laufzeiten ablehnen', () => {
+      expect(validateYears(-5, false)).toBe(false)
+      expect(() => validateYears(-5, true)).toThrow('negativ')
+    })
+
+    it('sollte zu kleine Laufzeiten ablehnen', () => {
+      expect(validateYears(0, false)).toBe(false)
+      expect(() => validateYears(0, true)).toThrow('mindestens 1')
+    })
+
+    it('sollte zu große Laufzeiten ablehnen', () => {
+      expect(validateYears(60, false)).toBe(false)
+      expect(() => validateYears(60, true)).toThrow('maximal')
+    })
+
+    it('sollte unrealistische Werte ablehnen', () => {
+      expect(validateYears(500, false)).toBe(false)
+      expect(() => validateYears(500, true)).toThrow('unrealistisch')
+    })
+  })
+
+  describe('validateSparplanRequest', () => {
+    it('sollte gültigen Sparplan akzeptieren', () => {
+      expect(() => validateSparplanRequest({
+        etfName: 'S&P 500',
+        monatlicheRate: 200,
+        laufzeitJahre: 15,
+      })).not.toThrow()
+    })
+
+    it('sollte fehlenden ETF-Namen ablehnen', () => {
+      expect(() => validateSparplanRequest({
+        etfName: '',
+        monatlicheRate: 200,
+        laufzeitJahre: 15,
+      })).toThrow('ETF')
+    })
+
+    it('sollte ungültige Sparrate ablehnen', () => {
+      expect(() => validateSparplanRequest({
+        etfName: 'S&P 500',
+        monatlicheRate: -200,
+        laufzeitJahre: 15,
+      })).toThrow()
+    })
+
+    it('sollte ungültige Laufzeit ablehnen', () => {
+      expect(() => validateSparplanRequest({
+        etfName: 'S&P 500',
+        monatlicheRate: 200,
+        laufzeitJahre: 100,
+      })).toThrow()
+    })
+  })
 })
+
 
