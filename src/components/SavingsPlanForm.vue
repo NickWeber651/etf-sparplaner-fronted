@@ -88,7 +88,6 @@ const {
           max="10000"
           step="1"
           required
-          @input="monthlyRate = Math.max(25, Math.min(10000, Math.abs(monthlyRate || 0)))"
         />
         <!-- Fehlermeldung erscheint nur bei ungültiger Eingabe -->
         <span v-if="!isRateValid" class="error">Sparrate muss zwischen 25 und 10.000 € liegen</span>

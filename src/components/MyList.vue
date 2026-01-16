@@ -117,7 +117,6 @@ const s = getScenario
                   step="1"
                   required
                   aria-label="Monatliche Rate"
-                  @input="editForm.monatlicheRate = Math.max(25, Math.min(10000, Math.abs(editForm.monatlicheRate || 0)))"
                 />
               </label>
 
@@ -132,7 +131,6 @@ const s = getScenario
                   step="1"
                   required
                   aria-label="Laufzeit"
-                  @input="editForm.laufzeitJahre = Math.max(1, Math.min(50, Math.abs(editForm.laufzeitJahre || 0)))"
                 />
               </label>
             </div>
