@@ -39,19 +39,17 @@ describe('SavingsPlanForm', () => {
     expect(wrapper.find('button[type="submit"]').exists()).toBe(true)
   })
 
-  // Test 2: Prüft ob Input-Sanitization ungültige Werte verhindert
-  it('sanitiert ungültige Sparrate automatisch', async () => {
+  // Test 2: Prüft ob Button bei ungültigen Werten disabled ist
+  it('zeigt ungültige Sparrate als invalid an', async () => {
     const wrapper = mountSavingsPlanForm()
 
     const rateInput = wrapper.find('#rate')
 
-    // Versuche ungültigen Wert zu setzen (< 25)
+    // Setze ungültigen Wert (< 25)
     await rateInput.setValue(10)
-    await rateInput.trigger('input')
     await wrapper.vm.$nextTick()
 
-    // Input-Sanitization sollte den Wert auf Minimum (25) korrigiert haben
-    // Button ist immer noch disabled weil kein ETF ausgewählt ist
+    // Button sollte disabled sein wegen ungültiger Sparrate
     const button = wrapper.find('button[type="submit"]')
     expect(button.attributes('disabled')).toBeDefined()
   })

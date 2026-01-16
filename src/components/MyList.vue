@@ -155,10 +155,7 @@ const s = getScenario
                     max="100"
                     step="1"
                     :value="getHoldYearsValue(p.id)"
-                    @input="(e) => {
-                      const val = Math.max(0, Math.min(100, Math.abs(Number((e.target as HTMLInputElement).value) || 0)));
-                      updateHoldYears(p.id, val);
-                    }"
+                    @input="(e) => updateHoldYears(p.id, Number((e.target as HTMLInputElement).value))"
                   />
                 </label>
               </div>

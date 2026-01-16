@@ -106,7 +106,6 @@ const {
           max="50"
           step="1"
           required
-          @input="years = Math.max(1, Math.min(50, Math.abs(years || 0)))"
         />
         <span v-if="!isYearsValid" class="error">Laufzeit muss zwischen 1 und 50 Jahren liegen</span>
       </div>
