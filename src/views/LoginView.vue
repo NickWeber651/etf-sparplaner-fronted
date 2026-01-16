@@ -1,75 +1,20 @@
 <script setup lang="ts">
 /**
- * === LOGIN-VIEW ===
- * Authentifizierungs-Seite für bestehende Benutzer
- *
- * WICHTIG: Vue Composition API (wie moderne Java-Klassen)
- * - ref() = reaktive Variable (wie Observable in Java)
- * - Wenn sich der Wert ändert, aktualisiert Vue automatisch die UI
+ * LOGIN VIEW - PRESENTATION-LOGIC PATTERN
+ * VIEW: Template + Styles
+ * LOGIC: LoginView.logic.ts
  */
 
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { login } from '../services/authApi'
+import { useLoginView } from '@/composables/views/useLoginView'
 
-/**
- * === REACTIVE STATE ===
- * ref() erstellt reaktive Variablen
- * .value = der eigentliche Wert (wie .get() bei Optional in Java)
- */
-const email = ref('')
-const password = ref('')
-const isLoading = ref(false)           // Zeigt Ladezustand an
-const errorMessage = ref<string | null>(null)  // Fehlermeldung
+const {
+  email,
+  password,
+  isLoading,
+  errorMessage,
+  handleLogin,
+} = useLoginView()
 
-// Router für Navigation nach Login
-const router = useRouter()
-
-/**
- * === LOGIN-HANDLER ===
- * Wird beim Absenden des Formulars aufgerufen
- * @submit.prevent verhindert Seitenreload (wie preventDefault() in JavaScript)
- *
- * Sendet POST /api/auth/login ans Backend
- * Bei Erfolg: Token wird gespeichert, Redirect zu Home
- */
-async function handleLogin() {
-  // Fehlermeldung zurücksetzen
-  errorMessage.value = null
-
-  // Einfache Validierung
-  if (!email.value || !password.value) {
-    errorMessage.value = 'Bitte fülle alle Felder aus!'
-    return
-  }
-
-  // Debug-Ausgabe (wie System.out.println in Java)
-  console.log('Login-Versuch:', {
-    email: email.value,
-    password: '***' // Passwort nie loggen in Production!
-  })
-
-  // Ladezustand aktivieren
-  isLoading.value = true
-
-  try {
-    // API-Call zum Backend
-    await login(email.value, password.value)
-
-    // Erfolg: Zur Startseite navigieren
-    console.log('✅ Login erfolgreich, navigiere zu Home...')
-    router.push('/')
-
-  } catch (error) {
-    // Fehlerbehandlung
-    console.error('❌ Login fehlgeschlagen:', error)
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : 'Login fehlgeschlagen. Bitte versuche es erneut.'
-  } finally {
-    isLoading.value = false
-  }
-}
 </script>
 
 <template>

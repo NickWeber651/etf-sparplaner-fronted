@@ -1,8 +1,35 @@
-# .
+# ETF Sparplaner Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Ein modernes Vue 3 Frontend für die ETF-Sparplan-Verwaltung mit TypeScript, Pinia State Management und umfassender Test-Abdeckung.
 
-## Recommended IDE Setup
+## 🎯 Features
+
+- ✅ ETF-Sparplan-Verwaltung (Erstellen, Bearbeiten, Löschen)
+- ✅ Szenario-Berechnungen (Best/Base/Worst Case)
+- ✅ Authentication (Login, Register, Password Reset)
+- ✅ FX-Rates Integration
+- ✅ Responsive Design
+- ✅ TypeScript & Type Safety
+- ✅ 59 Unit-Tests
+- ✅ Clean Architecture
+
+## 📁 Projekt-Struktur
+
+```
+src/
+├── components/      # Vue Komponenten (6 Komponenten, alle verwendet)
+├── composables/     # Wiederverwendbare Vue Composables
+├── router/          # Vue Router Konfiguration
+├── services/        # API Services
+├── stores/          # Pinia Stores (State Management)
+├── types/           # TypeScript Type-Definitionen
+├── utils/           # Utility-Funktionen
+└── views/           # Page-Komponenten (5 Views)
+```
+
+**Hinweis:** Das Projekt wurde am 2025-01-16 bereinigt. Details siehe [CLEANUP_REPORT.md](./CLEANUP_REPORT.md)
+
+## 🚀 Recommended IDE Setup
 
 [VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
 

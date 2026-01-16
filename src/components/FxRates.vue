@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue'
-import { getLatestRates, type LatestRatesResponse } from '../services/fxApi'
+/**
+ * FX RATES VIEW - PRESENTATION-LOGIC PATTERN
+ * VIEW: Template + Styles
+ * LOGIC: FxRates.logic.ts
+ */
+
+import { useFxRates } from '@/composables/components/useFxRates'
 
 const props = withDefaults(
   defineProps<{
@@ -13,35 +18,14 @@ const props = withDefaults(
   }
 )
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const data = ref<LatestRatesResponse | null>(null)
+const {
+  loading,
+  error,
+  data,
+  title,
+  fmtRate,
+} = useFxRates(props)
 
-const title = computed(() => `${props.base} → ${props.symbols.join(', ')}`)
-
-watchEffect(async (onCleanup) => {
-  const controller = new AbortController()
-  onCleanup(() => controller.abort())
-
-  loading.value = true
-  error.value = null
-
-  try {
-    // fetch wrapper nutzt kein signal – daher nur "soft" cleanup via Abort für zukünftige Erweiterung
-    const res = await getLatestRates(props.base, props.symbols)
-    data.value = res
-  } catch (e) {
-    if ((e as any)?.name === 'AbortError') return
-    error.value = e instanceof Error ? e.message : 'Fehler beim Laden der Wechselkurse'
-    data.value = null
-  } finally {
-    loading.value = false
-  }
-})
-
-function fmtRate(x?: number) {
-  return typeof x === 'number' ? x.toFixed(4) : '—'
-}
 </script>
 
 <template>

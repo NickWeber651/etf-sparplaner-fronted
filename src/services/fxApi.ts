@@ -1,9 +1,8 @@
 // src/services/fxApi.ts
-export type LatestRatesResponse = {
-  base: string
-  date: string
-  rates: Record<string, number>
-}
+import type { LatestRatesResponse } from '@/types'
+
+// Re-export für Komponenten, die es direkt importieren
+export type { LatestRatesResponse }
 
 export async function getLatestRates(
   base: string = 'EUR',

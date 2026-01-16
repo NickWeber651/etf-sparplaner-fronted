@@ -1,12 +1,5 @@
 // src/services/newsApi.ts
-export type NewsItem = {
-  id: string
-  title: string
-  url: string | null
-  time: number // unix seconds
-  by: string
-  score?: number
-}
+import type { NewsItem } from '@/types'
 
 type AlgoliaHit = {
   objectID: string

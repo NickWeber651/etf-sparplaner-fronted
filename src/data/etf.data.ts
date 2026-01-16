@@ -1,23 +1,15 @@
-// src/data/etfInfo.ts
-// ✅ NUR TypeScript – KEIN <template>, KEIN <style>, KEIN Vue-Import
+/**
+ * ETF DATA
+ * Zentrale ETF-Informationen und -Daten
+ */
 
-export type RiskLabel = 'niedrig' | 'mittel' | 'hoch'
+import type { EtfInfo } from '@/types'
 
-export interface EtfInfo {
-  id: number
-  name: string
-  isin: string
-  ter: number
-  coverage: string
-  regions: string
-  diversification: string
-  notes: string[]
-  volatility1y: number
-  maxDrawdown1y: number
-  riskLabel: RiskLabel
-}
-
-export const ETF_INFO: EtfInfo[] = [
+/**
+ * Zentrale ETF-Datenbank
+ * Diese Daten werden in der gesamten Anwendung verwendet
+ */
+export const ETF_DATA: EtfInfo[] = [
   {
     id: 1,
     name: 'S&P 500',
@@ -45,8 +37,8 @@ export const ETF_INFO: EtfInfo[] = [
     diversification: 'hoch',
     notes: [
       'Breit gestreut über viele Länder/Branchen',
-      'Trotz “World” meist hoher USA-Anteil',
-      'Guter Core-Baustein für langfristig',
+      'Trotz "World" meist hoher USA-Anteil',
+      'Guter "Core"-Baustein für langfristig',
     ],
     volatility1y: 15.5,
     maxDrawdown1y: -12.5,
@@ -63,10 +55,11 @@ export const ETF_INFO: EtfInfo[] = [
     notes: [
       'Noch breiter als MSCI World (inkl. Emerging Markets)',
       'EM können Schwankungen erhöhen',
-      'Sehr guter All-in-One Weltbaustein',
+      'Sehr guter "All-in-One"-Weltbaustein',
     ],
     volatility1y: 16.2,
     maxDrawdown1y: -13.2,
     riskLabel: 'mittel',
   },
 ]
+

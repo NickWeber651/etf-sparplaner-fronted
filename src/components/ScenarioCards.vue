@@ -1,46 +1,27 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
 /**
- * Props von außen:
- * - rate: monatliche Sparrate
- * - years: Laufzeit in Jahren
- * - etfName: Name des ETFs
+ * SCENARIO CARDS VIEW - PRESENTATION-LOGIC PATTERN
+ * VIEW: Template + Styles
+ * LOGIC: ScenarioCards.logic.ts
  */
+
+import { useScenarioCards } from '@/composables/components/useScenarioCards'
+
 const props = defineProps<{
   rate: number
   years: number
   etfName: string
 }>()
 
-// Anzahl Monate
-const months = computed(() => props.years * 12)
+const {
+  bestCase,
+  baseCase,
+  worstCase,
+  etfName,
+  rate,
+  years,
+} = useScenarioCards(props)
 
-/**
- * Hilfsfunktion für den Sparplan-Endwert:
- * Endwert = r * ((1 + i)^n - 1) / i
- * r = monatliche Sparrate
- * i = monatlicher Zinssatz
- * n = Anzahl Monate
- */
-function calcEndValue(monthly: number, yearlyReturn: number, months: number): number {
-  const i = yearlyReturn / 12
-  if (i === 0) {
-    return Math.round(monthly * months)
-  }
-  const endValue = monthly * ((Math.pow(1 + i, months) - 1) / i)
-  return Math.round(endValue)
-}
-
-// Drei Szenarien
-const bestCase = computed(() => calcEndValue(props.rate, 0.08, months.value))
-const baseCase = computed(() => calcEndValue(props.rate, 0.06, months.value))
-const worstCase = computed(() => calcEndValue(props.rate, 0.03, months.value))
-
-// Für das Template bequemer Zugriff auf den ETF-Namen
-const etfName = computed(() => props.etfName)
-const rate = computed(() => props.rate)
-const years = computed(() => props.years)
 </script>
 
 <template>

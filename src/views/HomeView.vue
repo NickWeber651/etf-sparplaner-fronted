@@ -1,208 +1,37 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+/**
+ * HOME VIEW - PRESENTATION-LOGIC PATTERN
+ * VIEW: Template + Styles
+ * LOGIC: HomeView.logic.ts
+ */
+
 import AppNav from '../components/AppNav.vue'
 import AppHeader from '../components/AppHeader.vue'
 import SavingsPlanForm from '../components/SavingsPlanForm.vue'
 import ScenarioCards from '../components/ScenarioCards.vue'
 import MyList from '../components/MyList.vue'
-import { createSparplan } from '../services/sparplanApi'
 import FxRates from '../components/FxRates.vue'
+import { useHomeView } from '@/composables/views/useHomeView'
 
-/**
- * ETF-Zusatzinfos (Mock)
- */
-export type RiskLabel = 'niedrig' | 'mittel' | 'hoch'
+const {
+  etfs,
+  loadingEtfs,
+  errorEtfs,
+  selectedEtf,
+  selectedEtfRaw,
+  monthlyRate,
+  years,
+  selectedEtfInfo,
+  showEtfDebug,
+  isSaving,
+  errorMessage,
+  successMessage,
+  reloadKey,
+  rankTextByVol,
+  rankTextByDrawdown,
+  handleSubmitPlan,
+} = useHomeView()
 
-export interface EtfInfo {
-  id: number
-  name: string
-  isin: string
-  ter: number
-  coverage: string
-  regions: string
-  diversification: string
-  notes: string[]
-  volatility1y: number
-  maxDrawdown1y: number
-  riskLabel: RiskLabel
-}
-
-const ETF_INFO: EtfInfo[] = [
-  {
-    id: 1,
-    name: 'S&P 500',
-    isin: 'IE00B5BMR087',
-    ter: 0.0007,
-    coverage: 'USA (Large Caps)',
-    regions: 'USA',
-    diversification: 'mittel',
-    notes: [
-      'Stark USA-lastig, viele Tech-Werte',
-      'Kann USD-Schwankungen enthalten (je nach Produkt)',
-      'Historisch oft gute Rendite – aber Klumpenrisiko USA',
-    ],
-    volatility1y: 17.0,
-    maxDrawdown1y: -14.0,
-    riskLabel: 'mittel',
-  },
-  {
-    id: 2,
-    name: 'MSCI World',
-    isin: 'IE00B4L5Y983',
-    ter: 0.002,
-    coverage: 'Industrieländer weltweit',
-    regions: 'Welt (Developed Markets)',
-    diversification: 'hoch',
-    notes: [
-      'Breit gestreut über viele Länder/Branchen',
-      'Trotz “World” meist hoher USA-Anteil',
-      'Guter “Core”-Baustein für langfristig',
-    ],
-    volatility1y: 15.5,
-    maxDrawdown1y: -12.5,
-    riskLabel: 'mittel',
-  },
-  {
-    id: 3,
-    name: 'FTSE All-World',
-    isin: 'IE00B3RBWM25',
-    ter: 0.0022,
-    coverage: 'Welt inkl. Schwellenländer',
-    regions: 'Welt (Developed + Emerging)',
-    diversification: 'sehr hoch',
-    notes: [
-      'Noch breiter als MSCI World (inkl. Emerging Markets)',
-      'EM können Schwankungen erhöhen',
-      'Sehr guter “All-in-One”-Weltbaustein',
-    ],
-    volatility1y: 16.2,
-    maxDrawdown1y: -13.2,
-    riskLabel: 'mittel',
-  },
-]
-
-// Dropdown-Daten direkt aus ETF_INFO (Match wird dadurch trivial)
-const etfs = ref(
-  ETF_INFO.map(e => ({
-    id: e.id,
-    name: e.name,
-    isin: e.isin,
-    ter: e.ter,
-  }))
-)
-
-const loadingEtfs = ref(false)
-const errorEtfs = ref<string | null>(null)
-
-// Szenario State
-const selectedEtf = ref('')      // normalisierter Name
-const selectedEtfRaw = ref('')   // Original aus dem Form (Debug)
-const monthlyRate = ref(200)
-const years = ref(15)
-
-function normalizeEtfName(input: unknown): string {
-  const name = typeof input === 'string' ? input : ''
-  const marker = ' (TER'
-  const idx = name.indexOf(marker)
-  const base = idx === -1 ? name : name.slice(0, idx)
-  return base.trim()
-}
-
-function keyify(input: unknown): string {
-  return normalizeEtfName(input)
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function extractIsin(input: unknown): string | null {
-  const s = typeof input === 'string' ? input : ''
-  const m = s.toUpperCase().match(/[A-Z]{2}[A-Z0-9]{10}/)
-  return m ? m[0] : null
-}
-
-const selectedEtfInfo = computed<EtfInfo | null>(() => {
-  const raw = selectedEtfRaw.value || selectedEtf.value
-  const key = keyify(raw)
-  const isin = extractIsin(raw)
-
-  const byExactName = ETF_INFO.find(e => keyify(e.name) === key)
-  if (byExactName) return byExactName
-
-  if (isin) {
-    const byIsin = ETF_INFO.find(e => e.isin.toUpperCase() === isin)
-    if (byIsin) return byIsin
-  }
-
-  const rawLower = String(raw).toLowerCase()
-  const byContainsName = ETF_INFO.find(e => rawLower.includes(e.name.toLowerCase()))
-  if (byContainsName) return byContainsName
-
-  const byContainsIsin = ETF_INFO.find(e => String(raw).toUpperCase().includes(e.isin.toUpperCase()))
-  if (byContainsIsin) return byContainsIsin
-
-  return null
-})
-
-const showEtfDebug = computed(() => {
-  return (selectedEtfRaw.value || selectedEtf.value) && !selectedEtfInfo.value
-})
-
-function rankTextByVol(id: number) {
-  const sorted = [...ETF_INFO].sort((a, b) => a.volatility1y - b.volatility1y)
-  const pos = sorted.findIndex(x => x.id === id)
-  if (pos === 0) return 'am stabilsten (niedrigste Volatilität) im Vergleich'
-  if (pos === sorted.length - 1) return 'am volatilsten (höchste Volatilität) im Vergleich'
-  return 'mittlere Volatilität im Vergleich'
-}
-
-function rankTextByDrawdown(id: number) {
-  const sorted = [...ETF_INFO].sort((a, b) => b.maxDrawdown1y - a.maxDrawdown1y)
-  const pos = sorted.findIndex(x => x.id === id)
-  if (pos === 0) return 'hatte den geringsten Rückgang (Drawdown) im Vergleich'
-  if (pos === sorted.length - 1) return 'hatte den stärksten Rückgang (Drawdown) im Vergleich'
-  return 'liegt beim Drawdown im Mittelfeld'
-}
-
-// UI Messages
-const isSaving = ref(false)
-const errorMessage = ref<string | null>(null)
-const successMessage = ref<string | null>(null)
-
-// MyList neu mounten (ohne MyList.vue zu ändern!)
-const reloadKey = ref(0)
-
-async function handleSubmitPlan(payload: { etf: string; rate: number; years: number }) {
-  selectedEtfRaw.value = payload.etf
-  selectedEtf.value = payload.etf
-  monthlyRate.value = payload.rate
-  years.value = payload.years
-
-  errorMessage.value = null
-  successMessage.value = null
-  isSaving.value = true
-
-  try {
-    const selectedEtfObj = etfs.value.find(e => e.name === payload.etf)
-    const etfNameFormatted = selectedEtfObj
-      ? `${selectedEtfObj.name} (TER: ${(selectedEtfObj.ter * 100).toFixed(2)} %)`
-      : payload.etf
-
-    await createSparplan({
-      etfName: etfNameFormatted,
-      monatlicheRate: payload.rate,
-      laufzeitJahre: payload.years,
-    })
-
-    successMessage.value = '✅ Sparplan erfolgreich gespeichert!'
-    reloadKey.value += 1
-    setTimeout(() => (successMessage.value = null), 3000)
-  } catch (e) {
-    errorMessage.value = e instanceof Error ? e.message : 'Fehler beim Speichern des Sparplans'
-  } finally {
-    isSaving.value = false
-  }
-}
 </script>
 
 <template>

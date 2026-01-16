@@ -1,36 +1,18 @@
 <script setup lang="ts">
 /**
- * === NAVIGATION-KOMPONENTE ===
- * Zeigt Links zu verschiedenen Seiten der App
- *
- * Verwendet RouterLink statt <a> für:
- * - Keine Seitenreloads (SPA = Single Page Application)
- * - Schnellere Navigation
- * - Automatische "active" CSS-Klasse für aktuelle Route
+ * APP NAV VIEW - PRESENTATION-LOGIC PATTERN
+ * VIEW: Template + Styles
+ * LOGIC: @/composables/components/useAppNav.ts
  */
 
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { isAuthenticated, getUserEmail, logout } from '../services/authApi'
+import { useAppNav } from '@/composables/components/useAppNav'
 
-const router = useRouter()
+const {
+  loggedIn,
+  userEmail,
+  handleLogout,
+} = useAppNav()
 
-/**
- * Reaktive Computed-Properties für Auth-Status
- * (werden automatisch aktualisiert wenn sich localStorage ändert)
- */
-const loggedIn = computed(() => isAuthenticated())
-const userEmail = computed(() => getUserEmail())
-
-/**
- * Logout-Handler
- * Löscht Token und navigiert zu Login-Seite
- */
-function handleLogout() {
-  logout()
-  console.log('👋 Logout erfolgreich')
-  router.push('/login')
-}
 </script>
 
 <template>

@@ -1,94 +1,23 @@
 <script setup lang="ts">
 /**
- * === REGISTRIERUNGS-VIEW ===
- * Erstellt neue Benutzer-Accounts
- *
- * KOMPLEXER als Login, weil:
- * - Passwort-Bestätigung nötig (müssen übereinstimmen)
- * - Checkbox für Nutzungsbedingungen (muss aktiviert sein)
- * - Mehr Validierungen
+ * REGISTER VIEW - PRESENTATION-LOGIC PATTERN
+ * VIEW: Template + Styles
+ * LOGIC: RegisterView.logic.ts
  */
 
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { register } from '../services/authApi'
+import { useRegisterView } from '@/composables/views/useRegisterView'
 
-/**
- * === REACTIVE STATE ===
- * Jedes Input-Feld braucht eine ref()-Variable
- * (wie private Felder in einer Java-Klasse)
- */
-const email = ref('')
-const password = ref('')
-const passwordConfirm = ref('')            // Passwort-Wiederholung
-const termsAccepted = ref(false)           // Checkbox-Status (boolean)
-const isLoading = ref(false)               // Ladezustand
-const errorMessage = ref<string | null>(null)      // Fehlermeldung
-const successMessage = ref<string | null>(null)    // Erfolgsmeldung
+const {
+  email,
+  password,
+  passwordConfirm,
+  termsAccepted,
+  isLoading,
+  errorMessage,
+  successMessage,
+  handleRegister,
+} = useRegisterView()
 
-// Router für Navigation nach Registrierung
-const router = useRouter()
-
-/**
- * === REGISTRIERUNGS-HANDLER ===
- * Validiert alle Eingaben bevor sie ans Backend geschickt werden
- *
- * Validierungen (wie in einer Service-Schicht in Java):
- * 1. Alle Felder ausgefüllt? (HTML "required" Attribut prüft das auch)
- * 2. Passwörter identisch?
- * 3. Nutzungsbedingungen akzeptiert?
- * 4. E-Mail-Format korrekt? (Browser prüft das bei type="email")
- */
-async function handleRegister() {
-  // Meldungen zurücksetzen
-  errorMessage.value = null
-  successMessage.value = null
-
-  // Validierung 1: Passwörter vergleichen
-  if (password.value !== passwordConfirm.value) {
-    errorMessage.value = 'Die Passwörter stimmen nicht überein!'
-    return  // Frühes Return (wie Guard Clause in Clean Code)
-  }
-
-  // Validierung 2: Nutzungsbedingungen akzeptiert?
-  if (!termsAccepted.value) {
-    errorMessage.value = 'Bitte akzeptiere die Nutzungsbedingungen.'
-    return
-  }
-
-  // Debug-Ausgabe (wie Logger in Java)
-  console.log('Registrierung:', {
-    email: email.value,
-    password: '***',  // Nie echtes Passwort loggen!
-    termsAccepted: termsAccepted.value
-  })
-
-  // Ladezustand aktivieren
-  isLoading.value = true
-
-  try {
-    // API-Call zum Backend
-    await register(email.value, password.value)
-
-    // Erfolg: Meldung anzeigen und zur Startseite navigieren
-    console.log('✅ Registrierung erfolgreich, navigiere zu Home...')
-    successMessage.value = 'Registrierung erfolgreich! Du wirst weitergeleitet...'
-
-    // Kurz warten, dann zur Startseite navigieren (Auto-Login)
-    setTimeout(() => {
-      router.push('/')
-    }, 1500)
-
-  } catch (error) {
-    // Fehlerbehandlung
-    console.error('❌ Registrierung fehlgeschlagen:', error)
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : 'Registrierung fehlgeschlagen. Bitte versuche es erneut.'
-  } finally {
-    isLoading.value = false
-  }
-}
 </script>
 
 <template>

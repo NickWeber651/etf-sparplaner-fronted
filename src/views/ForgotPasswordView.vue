@@ -1,77 +1,22 @@
 <script setup lang="ts">
 /**
- * === PASSWORT VERGESSEN VIEW ===
- * Vereinfachter Passwort-Reset OHNE E-Mail-Versand
- *
- * ABLAUF:
- * 1. User gibt E-Mail ein
- * 2. User gibt neues Passwort ein
- * 3. Backend setzt Passwort zurück (prüft nur ob E-Mail existiert)
+ * FORGOT PASSWORD VIEW - PRESENTATION-LOGIC PATTERN
+ * VIEW: Template + Styles
+ * LOGIC: ForgotPasswordView.logic.ts
  */
 
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { resetPassword } from '../services/authApi'
+import { useForgotPasswordView } from '@/composables/views/useForgotPasswordView'
 
-/**
- * === REACTIVE STATE ===
- */
-const email = ref('')
-const newPassword = ref('')
-const confirmPassword = ref('')
-const isLoading = ref(false)
-const errorMessage = ref<string | null>(null)
-const successMessage = ref<string | null>(null)
+const {
+  email,
+  newPassword,
+  confirmPassword,
+  isLoading,
+  errorMessage,
+  successMessage,
+  handleResetPassword,
+} = useForgotPasswordView()
 
-const router = useRouter()
-
-/**
- * === PASSWORT-RESET HANDLER ===
- * Sendet POST /api/auth/reset-password ans Backend
- */
-async function handleResetPassword() {
-  errorMessage.value = null
-  successMessage.value = null
-
-  // Validierung
-  if (!email.value || !newPassword.value || !confirmPassword.value) {
-    errorMessage.value = 'Bitte fülle alle Felder aus!'
-    return
-  }
-
-  if (newPassword.value !== confirmPassword.value) {
-    errorMessage.value = 'Die Passwörter stimmen nicht überein!'
-    return
-  }
-
-  if (newPassword.value.length < 6) {
-    errorMessage.value = 'Das Passwort muss mindestens 6 Zeichen lang sein!'
-    return
-  }
-
-  console.log('Passwort-Reset für:', email.value)
-
-  isLoading.value = true
-
-  try {
-    await resetPassword(email.value, newPassword.value)
-
-    successMessage.value = '✅ Passwort erfolgreich zurückgesetzt! Du wirst zum Login weitergeleitet...'
-
-    // Nach 2 Sekunden zum Login weiterleiten
-    setTimeout(() => {
-      router.push('/login')
-    }, 2000)
-
-  } catch (error) {
-    console.error('❌ Passwort-Reset fehlgeschlagen:', error)
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : 'Passwort-Reset fehlgeschlagen. Bitte versuche es erneut.'
-  } finally {
-    isLoading.value = false
-  }
-}
 </script>
 
 <template>

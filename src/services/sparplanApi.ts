@@ -44,32 +44,7 @@ function getAuthHeaders(): Record<string, string> {
   return headers
 }
 
-/**
- * === TYPESCRIPT INTERFACES ===
- * Definieren die Struktur der Daten (wie Java-Klassen/DTOs)
- */
-
-/**
- * Datenstruktur für einen neuen Sparplan (Request-Body für POST)
- * Entspricht dem Java-DTO im Backend
- */
-export interface SparplanRequest {
-  etfName: string        // z.B. "S&P 500 (TER: 0.07 %)"
-  monatlicheRate: number // z.B. 200
-  laufzeitJahre: number  // z.B. 15
-}
-
-/**
- * Datenstruktur für einen gespeicherten Sparplan (Response vom Backend)
- * Enthält zusätzlich ID und Erstellungsdatum
- */
-export interface SparplanResponse {
-  id: number             // Auto-generierte ID vom Backend
-  etfName: string
-  monatlicheRate: number
-  laufzeitJahre: number
-  erstelltAm: string     // ISO-Date-String, z.B. "2025-12-06"
-}
+import type { SparplanRequest, SparplanResponse } from '@/types'
 
 /**
  * === API-FUNKTIONEN ===

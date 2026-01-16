@@ -1,59 +1,35 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+/**
+ * SAVINGS PLAN FORM VIEW - PRESENTATION-LOGIC PATTERN
+ *
+ * VIEW: Template + Styles
+ * LOGIC: SavingsPlanForm.logic.ts
+ */
 
-// 👉 NEU: Props vom Parent (ETF-Liste + Lade-/Fehlerzustand + Speicherzustand)
-const { etfs, loadingEtfs, errorEtfs, isSaving } = defineProps<{
+import { useSavingsPlanForm } from '@/composables/components/useSavingsPlanForm'
+
+const props = defineProps<{
   etfs: { id: number; name: string; isin: string; ter: number }[]
   loadingEtfs: boolean
   errorEtfs: string | null
-  isSaving?: boolean  // Optional: Wird Sparplan gerade gespeichert?
+  isSaving?: boolean
 }>()
 
-// Formulardaten (reaktive Variablen)
-const selectedEtf = ref('')         // erst mal leer, wird aus Dropdown gewählt
-const monthlyRate = ref<number>(200)
-const years = ref<number>(15)
-// Ausgewählter ETF als Objekt (oder null, wenn noch keiner gewählt)
-const selectedEtfDetails = computed(() => {
-  return etfs.find(e => e.name === selectedEtf.value) ?? null
-})
-
-// Separate Validierung für jedes Feld (für visuelles Feedback)
-const isRateValid = computed(() => monthlyRate.value >= 25 && monthlyRate.value <= 10000)
-const isYearsValid = computed(() => years.value >= 1 && years.value <= 50)
-
-// Gesamtvalidierung (beide Felder müssen gültig sein)
-const isValid = computed(() => isRateValid.value && isYearsValid.value)
-
-// Event-Definition – diese Komponente sendet ein submit-plan-Event nach oben
 const emit = defineEmits<{
   (e: 'submit-plan', payload: { etf: string; rate: number; years: number }): void
 }>()
 
-// Submit-Handler mit Validierung
-const handleSubmit = () => {
-  if (!isValid.value) {
-    alert('Bitte Eingaben prüfen:\n- Sparrate: 25-10.000 €\n- Laufzeit: 1-50 Jahre')
-    return
-  }
+const {
+  selectedEtf,
+  monthlyRate,
+  years,
+  selectedEtfDetails,
+  isRateValid,
+  isYearsValid,
+  isValid,
+  handleSubmit,
+} = useSavingsPlanForm(props, emit)
 
-  if (!selectedEtf.value) {
-    alert('Bitte einen ETF auswählen.')
-    return
-  }
-
-  emit('submit-plan', {
-    etf: selectedEtf.value,
-    rate: monthlyRate.value,
-    years: years.value,
-  })
-
-  console.log('Formular abgeschickt:', {
-    etf: selectedEtf.value,
-    rate: monthlyRate.value,
-    years: years.value,
-  })
-}
 </script>
 
 

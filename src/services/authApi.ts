@@ -1,3 +1,13 @@
+import type { AuthRequest, AuthResponse } from '@/types'
+import {
+  validateEmailLength,
+  validatePasswordLength,
+  validateEtfName,
+  validateAmount,
+  validateDuration,
+  VALIDATION_LIMITS,
+} from '@/utils'
+
 /**
  * === AUTH-API-SERVICE ===
  *
@@ -19,93 +29,17 @@ const BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL || 'http://localhost:8080
 const TOKEN_KEY = 'auth_token'
 const USER_EMAIL_KEY = 'user_email'
 
-/* === NEUE KONSTANTEN: MAX-LÄNGEN FÜR INPUTS === */
-export const MAX_EMAIL_LENGTH = 254
-export const MAX_PASSWORD_LENGTH = 128
+// Export Validierungs-Konstanten für externe Nutzung
+export const {
+  EMAIL_MAX_LENGTH: MAX_EMAIL_LENGTH,
+  PASSWORD_MAX_LENGTH: MAX_PASSWORD_LENGTH,
+  ETF_NAME_MAX_LENGTH: MAX_ETF_NAME_LENGTH,
+  AMOUNT_MAX_DIGITS: MAX_AMOUNT_DIGITS,
+  DURATION_MAX_YEARS: MAX_DURATION_YEARS,
+} = VALIDATION_LIMITS
 
-/* === NEUE HILFSFUNKTIONEN: VALIDIERUNG VOR API-Aufruf === */
-function validateEmailLength(email: string, context = 'E-Mail') {
-  const len = String(email || '').trim().length
-  if (len === 0) {
-    throw new Error(`${context} darf nicht leer sein`)
-  }
-  if (len > MAX_EMAIL_LENGTH) {
-    throw new Error(`${context} ist zu lang (max. ${MAX_EMAIL_LENGTH} Zeichen)`)
-  }
-}
-
-function validatePasswordLength(password: string, context = 'Passwort') {
-  const len = String(password || '').length
-  if (len === 0) {
-    throw new Error(`${context} darf nicht leer sein`)
-  }
-  if (len > MAX_PASSWORD_LENGTH) {
-    throw new Error(`${context} ist zu lang (max. ${MAX_PASSWORD_LENGTH} Zeichen)`)
-  }
-}
-
-/* === NEUE KONSTANTEN: LIMITS FÜR SPARPLAN-FELDER (ETF-NAME, BETRAG, LAUFZEIT) === */
-/* keep small limits per your request */
-export const MAX_ETF_NAME_LENGTH = 30        // max characters for ETF name
-export const MAX_AMOUNT_DIGITS = 12          // max total chars for amount (incl. decimals, dot/comma)
-export const MAX_DURATION_YEARS = 50         // max years for Laufzeit
-
-/* === NEUE VALIDATOR-HELPER FÜR SPARPLÄNE === */
-export function validateEtfName(name: string, context = 'ETF-Name') {
-  const len = String(name || '').trim().length
-  if (len === 0) {
-    throw new Error(`${context} darf nicht leer sein`)
-  }
-  if (len > MAX_ETF_NAME_LENGTH) {
-    throw new Error(`${context} ist zu lang (max. ${MAX_ETF_NAME_LENGTH} Zeichen)`)
-  }
-}
-
-export function validateAmount(amount: string | number, context = 'Betrag') {
-  const str = String(amount ?? '').trim()
-  if (str.length === 0) {
-    throw new Error(`${context} darf nicht leer sein`)
-  }
-  // allow digits, optional decimal separator; limit total length to avoid huge inputs
-  if (str.length > MAX_AMOUNT_DIGITS) {
-    throw new Error(`${context} ist zu lang (max. ${MAX_AMOUNT_DIGITS} Zeichen)`)
-  }
-  if (!/^\d+([.,]\d{1,2})?$/.test(str)) {
-    throw new Error(`${context} muss eine gültige Zahl sein (max. 2 Dezimalstellen)`)
-  }
-  // basic numeric check
-  const normalized = str.replace(',', '.')
-  const n = Number(normalized)
-  if (!isFinite(n) || n < 0) {
-    throw new Error(`${context} muss eine gültige positive Zahl sein`)
-  }
-}
-
-export function validateDuration(years: number | string, context = 'Laufzeit') {
-  const n = Number(years)
-  if (!Number.isFinite(n) || n <= 0) {
-    throw new Error(`${context} muss eine positive Zahl sein`)
-  }
-  if (n > MAX_DURATION_YEARS) {
-    throw new Error(`${context} ist zu groß (max. ${MAX_DURATION_YEARS} Jahre)`)
-  }
-}
-
-/**
- * === TYPESCRIPT INTERFACES ===
- */
-
-/** Request-Body für Login und Registrierung */
-export interface AuthRequest {
-  email: string
-  password: string
-}
-
-/** Response vom Backend nach erfolgreichem Login/Register */
-export interface AuthResponse {
-  token: string
-  email: string
-}
+// Export Validierungs-Funktionen
+export { validateEmailLength, validatePasswordLength, validateEtfName, validateAmount, validateDuration }
 
 /**
  * === TOKEN-FUNKTIONEN ===
