@@ -5,10 +5,8 @@
 
 import { ref, computed } from 'vue'
 import {
-  sanitizeNumberInput,
   validateSparrate,
   validateYears,
-  VALIDATION_LIMITS,
 } from '@/utils/validation.utils'
 
 interface EtfBasic {
@@ -53,59 +51,39 @@ export function useSavingsPlanForm(
 
   // Functions
   function handleSubmit() {
-    // Sanitize Inputs erst mal
-    const sanitizedRate = sanitizeNumberInput(
-      monthlyRate.value,
-      VALIDATION_LIMITS.SPARRATE_MIN,
-      VALIDATION_LIMITS.SPARRATE_MAX,
-      200
-    )
-
-    const sanitizedYears = sanitizeNumberInput(
-      years.value,
-      VALIDATION_LIMITS.YEARS_MIN,
-      VALIDATION_LIMITS.YEARS_MAX,
-      15
-    )
-
-    // Update die Werte falls sie bereinigt wurden
-    if (monthlyRate.value !== sanitizedRate) {
-      monthlyRate.value = sanitizedRate
-    }
-    if (years.value !== sanitizedYears) {
-      years.value = sanitizedYears
-    }
-
-    // Validierung
+    // Validierung - kein ETF ausgewählt
     if (!selectedEtf.value) {
       alert('Bitte einen ETF auswählen.')
       return
     }
 
+    // Validierung - prüfe Sparrate und Laufzeit
     try {
-      validateSparrate(sanitizedRate, true)
-      validateYears(sanitizedYears, true)
+      validateSparrate(monthlyRate.value, true)
+      validateYears(years.value, true)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Ungültige Eingabe'
       alert(`Validierungsfehler:\n${message}`)
       return
     }
 
+    // Finale Prüfung
     if (!isValid.value) {
       alert('Bitte Eingaben prüfen:\n- Sparrate: 25-10.000 €\n- Laufzeit: 1-50 Jahre')
       return
     }
 
+    // Alles ok - Submit
     emit('submit-plan', {
       etf: selectedEtf.value,
-      rate: sanitizedRate,
-      years: sanitizedYears,
+      rate: monthlyRate.value,
+      years: years.value,
     })
 
     console.log('Formular abgeschickt:', {
       etf: selectedEtf.value,
-      rate: sanitizedRate,
-      years: sanitizedYears,
+      rate: monthlyRate.value,
+      years: years.value,
     })
   }
 

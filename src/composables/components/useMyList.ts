@@ -17,7 +17,6 @@ import {
 import { getAllEtfs, findEtfByInput } from '@/services/etfService'
 import { clamp } from '@/utils/number.utils'
 import {
-  sanitizeNumberInput,
   validateSparplanRequest,
   VALIDATION_LIMITS,
 } from '@/utils/validation.utils'
@@ -121,14 +120,9 @@ export function useMyList(props: { reloadKey?: number }) {
   }
 
   function updateHoldYears(id: number, years: number): void {
-    // Sanitize Input: verhindere negative Zahlen und extreme Werte
-    const sanitized = sanitizeNumberInput(
-      years,
-      0,
-      VALIDATION_LIMITS.REASONABLE_MAX_YEARS,
-      0
-    )
-    holdYearsByPlanId.value = setHoldYearsForPlan(holdYearsByPlanId.value, id, sanitized)
+    // Einfaches Clamping: negative Zahlen werden 0, zu große werden begrenzt
+    const clamped = Math.max(0, Math.min(VALIDATION_LIMITS.REASONABLE_MAX_YEARS, years || 0))
+    holdYearsByPlanId.value = setHoldYearsForPlan(holdYearsByPlanId.value, id, clamped)
     saveHoldYears(HOLD_STORAGE_KEY, holdYearsByPlanId.value)
   }
 
@@ -174,33 +168,18 @@ export function useMyList(props: { reloadKey?: number }) {
     savingId.value = id
 
     try {
-      // Sanitize Inputs bevor Validierung
-      const sanitizedRate = sanitizeNumberInput(
-        editForm.value.monatlicheRate,
-        VALIDATION_LIMITS.SPARRATE_MIN,
-        VALIDATION_LIMITS.SPARRATE_MAX,
-        VALIDATION_LIMITS.SPARRATE_MIN
-      )
-
-      const sanitizedYears = sanitizeNumberInput(
-        editForm.value.laufzeitJahre,
-        VALIDATION_LIMITS.YEARS_MIN,
-        VALIDATION_LIMITS.YEARS_MAX,
-        VALIDATION_LIMITS.YEARS_MIN
-      )
-
-      // Erstelle bereinigtes Request-Objekt
-      const sanitizedRequest: SparplanRequest = {
+      // Erstelle Request-Objekt mit aktuellen Werten
+      const request: SparplanRequest = {
         etfName: editForm.value.etfName,
-        monatlicheRate: sanitizedRate,
-        laufzeitJahre: sanitizedYears,
+        monatlicheRate: editForm.value.monatlicheRate,
+        laufzeitJahre: editForm.value.laufzeitJahre,
       }
 
-      // Validiere kompletten Request
-      validateSparplanRequest(sanitizedRequest)
+      // Validiere kompletten Request - wirft Error bei ungültigen Werten
+      validateSparplanRequest(request)
 
       // Update durchführen
-      const updated = await updateSparplan(id, sanitizedRequest)
+      const updated = await updateSparplan(id, request)
       sparplaene.value = sparplaene.value.map(p => (p.id === id ? updated : p))
       editingId.value = null
     } catch (e: unknown) {
